@@ -157,6 +157,7 @@ def argmentDataset(orgDir, rotate=True, flipMirror=True):
     return orgDir
 
 
+
 def calculate_statistics(image_paths):
     num_images = len(image_paths)
     
@@ -165,7 +166,7 @@ def calculate_statistics(image_paths):
     sum_squares = np.zeros(3)
     
     for image_path in tqdm(image_paths):
-        image = cv2.imread(image_path)  # 画像を読み込む
+        image = np.array(Image.open(image_path))  # 画像を読み込む        
         
         # 画像のピクセル値を正規化する
         normalized_image = image / 255.0
@@ -184,33 +185,6 @@ def calculate_statistics(image_paths):
     std_deviation = np.sqrt(variance)
     
     return mean_values, std_deviation
-
-
-def calculate_pil_statistics(image_paths):
-    red_values = []
-    green_values = []
-    blue_values = []
-
-    for image_path in tqdm(image_paths):
-        image = Image.open(image_path)
-        rgb_image = image.convert('RGB')
-        rgb_array = np.array(rgb_image)
-        rgb_array = rgb_array / 255.0
-        red_values.extend(rgb_array[:, :, 0].flatten())
-        green_values.extend(rgb_array[:, :, 1].flatten())
-        blue_values.extend(rgb_array[:, :, 2].flatten())
-
-    red_mean = np.mean(red_values)
-    green_mean = np.mean(green_values)
-    blue_mean = np.mean(blue_values)
-
-    red_std = np.std(red_values)
-    green_std = np.std(green_values)
-    blue_std = np.std(blue_values)
-
-    return [red_mean, green_mean, blue_mean], [red_std, green_std, blue_std]
-
-
 
 
 
