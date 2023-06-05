@@ -1,0 +1,17 @@
+.ipynb_checkpoints/*
+.vscode/*
+__pycache__/*
+.*DJI_*
+01_LabelboxExport/*
+02_MargedMaskImages/*
+03_datasetforModel/*
+04_trainingModel/*
+05_predicted/*
+元画像からlapsizeに応じて倍数で切り取る.pptx
+セグメンテーションモデルの特徴解説_segmentation_models_pytorch.md
+psql_connect.py
+Labelbox_Download.ipynb
+01_Labelbox_Download.py
+*.exe
+*.zip
+04_trainingModelpredictedSet_classcedar_data168_batch2_epoch200.png

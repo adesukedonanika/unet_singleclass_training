@@ -1,0 +1,2 @@
+GPU Memory Size: 16.00 GB
+168 168

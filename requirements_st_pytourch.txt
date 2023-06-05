@@ -1,0 +1,15 @@
+jupyterlab
+tqdm
+torch
+pandas
+skimage
+numpy
+pillow
+matplotlib
+torch
+albumentations
+opencsv-python
+zipfile
+folium
+geojson
+streamlit

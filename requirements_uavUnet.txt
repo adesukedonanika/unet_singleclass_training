@@ -1,0 +1,18 @@
+labelbox
+pillow
+pandas
+tqdm
+opencv-python
+pillow
+geojson
+shapely
+rasterio
+labelbox
+pygeotile
+pyproj
+matplotlib
+albumentations
+rasterio
+torch
+torchvision
+torchaudio --index-url https://download.pytorch.org/whl/cu117

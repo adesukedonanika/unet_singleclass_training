@@ -1,0 +1,2 @@
+python 04_segment_model_training.py cypress 200
+python 04_segment_model_training.py cedar 200
