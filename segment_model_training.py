@@ -44,49 +44,7 @@ import torch.nn.functional as F
 import zipfile
 import random
 
-
-
-
-def get_mskPath(orgPath):
-    mskPath = orgPath.replace("org","msk").replace(".jpg",".png")
-    if os.path.exists(mskPath):
-        return mskPath
-    else:
-        return ""
-
-
-def copyLocaliImages(orgDir, copyDir):
-    orgDirName = os.path.basename(orgDir)
-    
-    orgPaths = glob.glob(orgDir + "/*.*")
-    mskPath = get_mskPath(orgPaths[0])
-    mskDirName = os.path.basename(os.path.dirname(mskPath))
-
-    os.makedirs(os.path.join(copyDir,orgDirName), exist_ok=True)
-    os.makedirs(os.path.join(copyDir,mskDirName), exist_ok=True)
-
-    for orgPath in orgPaths:
-        mskPath = get_mskPath(orgPath)
-        new_orgPath = os.path.join(copyDir,orgDirName,os.path.basename(orgPath))
-        if not os.path.exists(new_orgPath):
-            shutil.copy(orgPath,new_orgPath)
-        
-        new_mskPath = os.path.join(copyDir,mskDirName,os.path.basename(mskPath))
-        if not os.path.exists(new_mskPath):
-            shutil.copy(mskPath,new_mskPath)
-    return os.path.join(copyDir,orgDirName)
-
-
-
-
-def addSavePath(Path,addKeyword):
-    Path_added = os.path.dirname(Path) + "/" + os.path.basename(Path).split(".")[0] + "_" + str(addKeyword) + "." + os.path.basename(Path).split(".")[1]
-    return Path_added
-
-def convMskPath(imgPath):
-    mskPath = imgPath.replace("org","msk").replace(".jpg",".png")
-    return mskPath
-
+from fpathutils import addSavePath, get_mskPath
 
 def flipMirrorSave(imgPath, SaveDir):
     os.makedirs(SaveDir,exist_ok=True)
@@ -186,16 +144,21 @@ def calculate_statistics(image_paths):
     
     return mean_values, std_deviation
 
+def waru255(img):
+    return img/255.0
 
 
 #画像データ拡張の関数
-def get_train_transform(mean_values,std_deviation):
+def get_train_transform():
+# def get_train_transform(mean_values,std_deviation):
    return A.Compose(
        [
         # #リサイズ(こちらはすでに適用済みなのでなくても良いです)
         #正規化(こちらの細かい値はalbumentations.augmentations.transforms.Normalizeのデフォルトの値を適用)
+        # waru255()
         # A.Normalize(),
-        A.Normalize(mean=mean_values, std=std_deviation),
+        # A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        # A.Normalize(mean=mean_values, std=std_deviation),
         #水平フリップ（pはフリップする確率）
         # A.HorizontalFlip(p=0.5),
         # #垂直フリップ
@@ -210,6 +173,14 @@ def mask2single(mask,values:list):
     mask[mask!=255] = 0
     return mask
 
+def printArrayStatics(nparray):
+    print(nparray.shape,nparray.max(), nparray.mean(), nparray.min())
+    if len(nparray.unique())>=10:
+        print(nparray.unique()[:6])
+    else:
+        print(nparray.unique())
+
+
 import psql_connect 
 
 #Datasetクラスの定義
@@ -217,8 +188,9 @@ class LoadDataSet(Dataset):
         def __init__(self,path, transform=None):
             self.path = path
             self.folders = os.listdir(path)
-            mean_values, std_deviation = psql_connect.getMeanStd(path)
-            self.transforms = get_train_transform(mean_values, std_deviation)
+            # mean_values, std_deviation = psql_connect.getMeanStd(path)
+            self.transforms = get_train_transform()
+            # self.transforms = get_train_transform(mean_values, std_deviation)
         
         def __len__(self):
             return len(self.folders)
@@ -231,18 +203,23 @@ class LoadDataSet(Dataset):
             mskPath = get_mskPath(orgPath)
             # print("\nimageName\t",os.path.basename(orgPath))
             #画像データの取得
-            img = io.imread(orgPath)[:,:,0:3].astype('float32')
+            # img = io.imread(orgPath)[:,:,0:3].astype('float32')
+            img = np.array(Image.open(orgPath))
+            # print("img array", img.shape)
+            img = img[:,:,0:3].astype('float32')
+            # print("img unique", img.max(),img.min(),img.mean())
             # img = transform.resize(img,(256,256))
             
             height, width, _ = img.shape
-            
+            # print("H W",height,width)
             mask = self.get_mask(mskPath, height, width ).astype('float32')
 
             if self.transforms:
                 augmented = self.transforms(image=img, mask=mask)
             # augmented key名　image, mask
-            img = augmented['image']
-            mask = augmented['mask']
+            img = augmented['image']/img.max()
+            mask = augmented['mask']/mask.max()
+            # print("mask",mask.shape)
             mask = mask.permute(2, 0, 1)
 
             # # 可視化
@@ -254,11 +231,15 @@ class LoadDataSet(Dataset):
 
         #マスクデータの取得
         def get_mask(self, mskPath, IMG_HEIGHT, IMG_WIDTH):
-            mask = np.zeros((IMG_HEIGHT, IMG_WIDTH, 1), dtype=bool)
-            mask_ = io.imread(mskPath)
-            mask_ = transform.resize(mask_, (IMG_HEIGHT, IMG_WIDTH))
-            mask_ = np.expand_dims(mask_,axis=-1)
-            mask = np.maximum(mask, mask_)
+            # mask = np.zeros((IMG_HEIGHT, IMG_WIDTH, 1), dtype=float)
+            # mask_ = transform.resize(mask_, (IMG_HEIGHT, IMG_WIDTH))
+            
+            mask = np.array(Image.open(mskPath))
+            
+            mask = np.expand_dims(mask,axis=-1)
+            # printArrayStatics(mask)
+            # mask = np.maximum(mask, mask_)
+            
               
             return mask
 
@@ -296,11 +277,22 @@ class LoadDataSet(Dataset):
 def format_image(img,mean_values,std_deviation):
     img = np.array(np.transpose(img, (1,2,0)))
     #下は画像拡張での正規化を元に戻しています
-    mean = mean_values
-    std= std_deviation
-    img  = std * img + mean
+    # mean = mean_values
+    # std= std_deviation
+    # img  = std * img + mean
     # img = img.astype(np.uint8)
     return img
+
+def format_image_defo(img):
+    img = np.array(np.transpose(img, (1,2,0)))
+    #下は画像拡張での正規化を元に戻しています
+    mean=np.array((0.485, 0.456, 0.406))
+    std=np.array((0.229, 0.224, 0.225))
+    img  = std * img + mean
+    img = img*255
+    img = img.astype(np.uint8)
+    return img
+
 
 def deformat_image(img,mean_values,std_deviation):
     img = np.array(np.transpose(img, (1,2,0)))
@@ -322,7 +314,7 @@ def visualize_dataset(n_images, predict=None):
         img_no = images[i]
         # print(img_no)
         image, mask = train_dataset.__getitem__(img_no)
-        image = format_image(image)
+        image = format_image_defo(image)
         mask = format_mask(mask)
         ax[i, 0].imshow(image)
         ax[i, 1].imshow(mask, interpolation="nearest", cmap="gray")

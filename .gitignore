@@ -1,4 +1,5 @@
 .ipynb_checkpoints/*
+data/*
 .vscode/*
 __pycache__/*
 .*DJI_*
