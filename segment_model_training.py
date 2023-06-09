@@ -206,19 +206,23 @@ class LoadDataSet(Dataset):
             # img = io.imread(orgPath)[:,:,0:3].astype('float32')
             img = np.array(Image.open(orgPath))
             # print("img array", img.shape)
+            img = img/img.max()
             img = img[:,:,0:3].astype('float32')
             # print("img unique", img.max(),img.min(),img.mean())
             # img = transform.resize(img,(256,256))
             
             height, width, _ = img.shape
             # print("H W",height,width)
-            mask = self.get_mask(mskPath, height, width ).astype('float32')
+            mask = self.get_mask(mskPath, height, width )
+            if not mask.max()==0:
+                mask = mask / mask.max()            
+            mask = mask.astype('float32')
 
             if self.transforms:
                 augmented = self.transforms(image=img, mask=mask)
             # augmented key名　image, mask
-            img = augmented['image']/img.max()
-            mask = augmented['mask']/mask.max()
+            img = augmented['image']
+            mask = augmented['mask']
             # print("mask",mask.shape)
             mask = mask.permute(2, 0, 1)
 
