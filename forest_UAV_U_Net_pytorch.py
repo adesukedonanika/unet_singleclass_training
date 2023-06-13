@@ -109,6 +109,11 @@ print(torch.cuda.is_available(),device)
 
 
 className =sys.argv[1]
+num_epochs=int(sys.argv[2])
+BATCHSIZE = int(sys.argv[3])
+resizeValue = int(sys.argv[4])
+
+
 TRAIN_PATH = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512_rotate_flipMirror"
 
 # os.makedirs(TRAIN_PATH,exist_ok=True)
@@ -167,7 +172,6 @@ from fpathutils import get_mskPath
 # In[10]:
 
 
-resizeValue = 512
 
 #画像データ拡張の関数
 def get_train_transform():
@@ -327,8 +331,6 @@ train_size=int(np.round(train_dataset.__len__()*(1 - split_valid_ratio),0))
 valid_size=int(np.round(train_dataset.__len__()*split_valid_ratio,0))
 
 # BATCHSIZE = train_dataset.__len__()//20
-BATCHSIZE = 4
-num_epochs=int(sys.argv[2])
 
 # BATCHSIZE = 8
 train_data, valid_data = random_split(train_dataset, [train_size, valid_size])
