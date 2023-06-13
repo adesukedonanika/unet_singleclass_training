@@ -1,2 +1,2 @@
-python 04_segment_model_training.py cypress 200
-python 04_segment_model_training.py cedar 200
+python forest_UAV_U_Net_pytorch.py cypress 200
+python forest_UAV_U_Net_pytorch.py cedar 200

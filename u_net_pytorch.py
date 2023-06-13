@@ -141,7 +141,7 @@ def format_image(img):
     return img
 def format_mask(mask):
     mask = np.squeeze(np.transpose(mask, (1,2,0)))
-    return mask
+    return np.array(mask)
 
 
 plt.clf()
@@ -333,3 +333,85 @@ def load_ckp(checkpoint_fpath, model, optimizer):
     return model, optimizer, checkpoint['epoch'], valid_loss_min.item()
 
 
+def getImgNo_fromImgPaths(paths):
+    # Regular expression pattern
+    pattern = re.compile(r'trainOutImages\\(\d+)_3_pred.png')
+
+    # List to store the numbers
+    numbers = []
+
+    for path in paths:
+        match = pattern.search(path)
+        if match:
+            number = int(match.group(1))  # convert the extracted string to int
+            numbers.append(number)
+
+    return numbers
+
+
+
+def visualize_training_predict(org_batchs, msk_batchs, pred_batchs, workDir:str, maskRGB:bool,imgSave:bool):
+
+    figure, ax = plt.subplots(nrows=1, ncols=3, figsize=(6, 2))
+
+    batchsize = org_batchs.shape[0]
+    random_index = np.random.randint(batchsize)
+
+    # for img_no in tqdm(range(0, n_images)):
+    tm  = pred_batchs[random_index].data.cpu().numpy()
+    tm  = tm.squeeze()
+    img = org_batchs[random_index].data.cpu()
+    msk = msk_batchs[random_index].data.cpu()
+    img = format_image(img)
+    msk = format_mask(msk)
+
+    # print(tm.shape, img.shape, msk.shape)
+    if maskRGB:
+        tm = img * tm[:, :, np.newaxis]
+        msk = img * msk[:, :, np.newaxis]
+    else:
+        msk[msk==1]=255
+        tm[tm==1]=255
+
+    # msk = cv2.medianBlur(np.array(msk),11)
+
+    img_no = 0    
+
+    outImagePath_img = os.path.join(workDir,"trainOutImages",f"{str(img_no)}_1_org.png")
+    outImagePath_msk = os.path.join(workDir,"trainOutImages",f"{str(img_no)}_2_msk.png")
+    outImagePath_pred = os.path.join(workDir,"trainOutImages",f"{str(img_no)}_3_pred.png")
+    os.makedirs(os.path.dirname(outImagePath_pred),exist_ok=True)
+
+    if os.path.exists(outImagePath_pred):
+        imgNoList = getImgNo_fromImgPaths(glob.glob(os.path.join(workDir,"trainOutImages", "*pred.png")))
+        if len(imgNoList)!=0:
+            img_no = sorted(imgNoList)[-1] + 1
+            outImagePath_img = os.path.join(workDir,"trainOutImages",f"{str(img_no)}_1_org.png")
+            outImagePath_msk = os.path.join(workDir,"trainOutImages",f"{str(img_no)}_2_msk.png")
+            outImagePath_pred = os.path.join(workDir,"trainOutImages",f"{str(img_no)}_3_pred.png")
+
+
+    # print(tm.shape, img.shape, msk.shape)
+    cv2.imwrite(outImagePath_img, img)
+    cv2.imwrite(outImagePath_msk,np.array(msk))
+    cv2.imwrite(outImagePath_pred,tm)
+
+
+    # ax[0].imshow(img)
+    # ax[1].imshow(msk)
+    # ax[2].imshow(tm)
+    # # ax[1].imshow(msk, interpolation="nearest", cmap="gray")
+    # # ax[2].imshow(tm, interpolation="nearest", cmap="gray")
+    # ax[0].set_title("Input")
+    # ax[1].set_title("Mask")
+    # ax[2].set_title("Predict")
+    # ax[0].set_axis_off()
+    # ax[1].set_axis_off()
+    # ax[2].set_axis_off()
+    # plt.tight_layout()
+    # if imgSave:
+    #     plt.savefig(os.path.join(workDir,"trainOutImages",f"predictedSet_{img_no}.png"))
+    # # plt.show()
+    # del ax, figure, tm, img, msk
+    # plt.clf()
+    # plt.close()
