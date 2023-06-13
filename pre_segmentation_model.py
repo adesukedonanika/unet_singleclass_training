@@ -20,14 +20,14 @@ smp.DeepLabV3Plus()
 # DeepLabV3
 # DeepLabV3+
 
-def UnetModel(encoder_name, encoder_weights, in_ch:int, outClass:int, activationName:str="softmax2d"):
+def UnetModel(encoder_name, encoder_weights, in_ch:int, outClass:int, decoder_channels:list, activationName:str="sigmoid"):
     # 1クラスマスク＝2クラス分類になるため、　outClass=2が正しい
     model = smp.Unet(
         encoder_name=encoder_name,        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
         encoder_weights=encoder_weights,     # use `imagenet` pre-trained weights for encoder initialization
         in_channels=in_ch,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
         classes=outClass,                      # model output channels (number of classes in your dataset)
-        # decoder_channels = [256, 128, 64, 32, 16] # default is [256, 128, 64, 32, 16]
+        decoder_channels = decoder_channels, # default is [256, 128, 64, 32, 16]
         activation=activationName
     )
     return model

@@ -4,7 +4,7 @@ import os, glob, shutil
 
 
 def get_mskPath(orgPath):
-    mskPath = orgPath.replace("org","msk").replace(".jpg",".png")
+    mskPath = orgPath.replace("org","msk").replace(".jpg",".png").replace(".JPG",".PNG")
     if os.path.exists(mskPath):
         return mskPath
     else:

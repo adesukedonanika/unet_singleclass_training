@@ -213,7 +213,7 @@ class LoadDataSet(Dataset):
             
             height, width, _ = img.shape
             # print("H W",height,width)
-            mask = self.get_mask(mskPath, height, width )
+            mask = self.get_mask(mskPath)
             if not mask.max()==0:
                 mask = mask / mask.max()            
             mask = mask.astype('float32')
@@ -223,8 +223,7 @@ class LoadDataSet(Dataset):
             # augmented key名　image, mask
             img = augmented['image']
             mask = augmented['mask']
-            # print("mask",mask.shape)
-            mask = mask.permute(2, 0, 1)
+            print("mask",mask.shape)
 
             # # 可視化
             # figure, ax = plt.subplots(nrows=2, ncols=2, figsize=(5, 8))
@@ -234,16 +233,25 @@ class LoadDataSet(Dataset):
             return (img,mask) 
 
         #マスクデータの取得
-        def get_mask(self, mskPath, IMG_HEIGHT, IMG_WIDTH):
-            # mask = np.zeros((IMG_HEIGHT, IMG_WIDTH, 1), dtype=float)
-            # mask_ = transform.resize(mask_, (IMG_HEIGHT, IMG_WIDTH))
+        def get_mask(self, mskPath):
             
             mask = np.array(Image.open(mskPath))
             
-            mask = np.expand_dims(mask,axis=-1)
+            # 画素値が255の場所を1に、0の場所を0に変換
+            mask = (mask == 255).astype(np.uint8)
+
+            # one-hotエンコーディング
+            one_hot_image = np.zeros((2, mask.shape[0], mask.shape[1]))
+            one_hot_image[0, :, :] = (mask == 0)
+            one_hot_image[1, :, :] = (mask == 1)
+            
+            # (2,1024,1024)
+            mask = np.expand_dims(one_hot_image,axis=-1)
             # printArrayStatics(mask)
             # mask = np.maximum(mask, mask_)
-            
+            print(one_hot_image.shape)
+            mask = mask.unsqueeze(0)  
+            # mask.shape is now (1, 2, 1024, 1024) =(BATCHSIZE, One-hot classes,height,width) 
               
             return mask
 
