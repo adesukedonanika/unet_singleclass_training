@@ -2,14 +2,14 @@ jupyterlab
 tqdm
 torch
 pandas
-skimage
 numpy
 pillow
 matplotlib
 torch
 albumentations
-opencsv-python
+opencv-python
 zipfile
 folium
 geojson
 streamlit
+skimage
