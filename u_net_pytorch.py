@@ -53,9 +53,10 @@ def get_train_transform():
    return A.Compose(
        [
         #リサイズ(こちらはすでに適用済みなのでなくても良いです)
-        A.Resize(256, 256),
+        A.Resize(resizeValue, resizeValue),
         #正規化(こちらの細かい値はalbumentations.augmentations.transforms.Normalizeのデフォルトの値を適用)
-        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        # A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        A.Normalize(),
         #水平フリップ（pはフリップする確率）
         A.HorizontalFlip(p=0.25),
         #垂直フリップ
@@ -70,6 +71,7 @@ def mask2single(mask,values:list):
     return mask
 
 
+
 #Datasetクラスの定義
 class LoadDataSet(Dataset):
         def __init__(self,path, transform=None):
@@ -82,15 +84,15 @@ class LoadDataSet(Dataset):
               
         
         def __getitem__(self,idx):
-            image_folder = os.path.join(self.path, self.folders[idx], "org")
-            mask_folder = os.path.join(self.path, self.folders[idx], "msk")
-            image_path = os.path.join(image_folder,os.listdir(image_folder)[0])
+            image_path = os.path.join(self.path, self.folders[idx])
+            mask_path = get_mskPath(os.path.join(self.path, self.folders[idx]))
+            # image_path = os.path.join(image_folder,os.listdir(image_folder)[idx])
             
             #画像データの取得
             img = io.imread(image_path)[:,:,0:3].astype('float32')
-            img = transform.resize(img,(256,256))
+            img = transform.resize(img,(resizeValue,resizeValue))
             
-            mask = self.get_mask(mask_folder, 256, 256 ).astype('float32')
+            mask = self.get_mask(mask_path, resizeValue, resizeValue ).astype('float32')
 
 
             augmented = self.transforms(image=img, mask=mask)
@@ -98,7 +100,6 @@ class LoadDataSet(Dataset):
             mask = augmented['mask']
             mask = mask.permute(2, 0, 1)
 
-            mask = mask2single(mask, classValues)
 
             # # 可視化
             # figure, ax = plt.subplots(nrows=2, ncols=2, figsize=(5, 8))
@@ -108,15 +109,15 @@ class LoadDataSet(Dataset):
             return (img,mask) 
 
         #マスクデータの取得
-        def get_mask(self,mask_folder,IMG_HEIGHT, IMG_WIDTH):
-            mask = np.zeros((IMG_HEIGHT, IMG_WIDTH, 1), dtype=np.bool)
-            for mask_ in os.listdir(mask_folder):
-                    mask_ = io.imread(os.path.join(mask_folder,mask_))
-                    mask_ = transform.resize(mask_, (IMG_HEIGHT, IMG_WIDTH))
-                    mask_ = np.expand_dims(mask_,axis=-1)
-                    mask = np.maximum(mask, mask_)
-              
+        def get_mask(self,mask_path,IMG_HEIGHT, IMG_WIDTH):
+            mask = np.zeros((IMG_HEIGHT, IMG_WIDTH, 1), dtype=np.bool_)
+            # for mask_ in os.listdir(mask_folder):
+            mask_ = io.imread(mask_path)
+            mask_ = transform.resize(mask_, (IMG_HEIGHT, IMG_WIDTH))
+            mask_ = np.expand_dims(mask_,axis=-1)
+            mask = np.maximum(mask, mask_)              
             return mask
+
 
 # train_dataset = LoadDataSet(TRAIN_PATH, transform=get_train_transform())
 
@@ -130,6 +131,7 @@ class LoadDataSet(Dataset):
 
 
 """次に、入力画像とマスクのデータがどうなっているのか確認してみます。"""
+
 def format_image(img):
     img = np.array(np.transpose(img, (1,2,0)))
     #下は画像拡張での正規化を元に戻しています
@@ -139,10 +141,11 @@ def format_image(img):
     img = img*255
     img = img.astype(np.uint8)
     return img
+
+
 def format_mask(mask):
     mask = np.squeeze(np.transpose(mask, (1,2,0)))
-    return np.array(mask)
-
+    return mask
 
 plt.clf()
 
