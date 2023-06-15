@@ -35,6 +35,7 @@ resizeValue = int(sys.argv[4])
 
 
 TRAIN_PATH = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512_rotate_flipMirror"
+# TRAIN_PATH = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512"
 # os.makedirs(TRAIN_PATH,exist_ok=True)
 
 from u_net_pytorch import get_train_transform, LoadDataSet
@@ -184,8 +185,12 @@ for epoch in range(num_epochs):
           "valid__scoreIoU" : total_valid_score,
           }
 
+          print(len(total_train_loss))
+          print(len(total_valid_loss))
+          print(len(total_train_score))
+          print(len(total_valid_score))
 
-          df_score = pd.DataFrame(score, index=range(1,num_epochs+1))
+          df_score = pd.DataFrame(score, index=range(1,len(total_train_score)+1))
           df_score.to_csv(csvPath)
           print("saved Score\n",csvPath)
 

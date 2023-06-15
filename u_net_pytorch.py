@@ -58,9 +58,9 @@ def get_train_transform(resizeValue):
         # A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
         A.Normalize(),
         #水平フリップ（pはフリップする確率）
-        A.HorizontalFlip(p=0.25),
+        # A.HorizontalFlip(p=0.25),
         #垂直フリップ
-        A.VerticalFlip(p=0.25),
+        # A.VerticalFlip(p=0.25),
         ToTensor()
         ])
 
@@ -119,6 +119,46 @@ class LoadDataSet(Dataset):
             mask_ = np.expand_dims(mask_,axis=-1)
             mask = np.maximum(mask, mask_)              
             return mask
+
+
+
+class LoadPredDataSet(Dataset):
+        def __init__(self,imgPaths,resizeValue, transform=None):
+            self.path = imgPaths
+            self.folders = [os.path.basename(imgPath) for imgPath in imgPaths]
+            self.transforms = get_train_transform(resizeValue)
+            self.resizeValue = resizeValue
+        
+        def __len__(self):
+            return len(self.folders)
+              
+        
+        def __getitem__(self, idx):
+            image_path = self.path[idx]
+            # mask_path = get_mskPath(self.path[idx])
+            resizeValue = self.resizeValue
+            
+            #画像データの取得
+            img = io.imread(image_path)[:,:,0:3].astype('float32')
+            img = transform.resize(img,(resizeValue,resizeValue))
+            
+            # mask = self.get_mask(mask_path, resizeValue, resizeValue ).astype('float32')
+
+
+            augmented = self.transforms(image=img)
+            # augmented = self.transforms(image=img, mask=mask)
+            img = augmented['image']
+            # mask = augmented['mask']
+            # mask = mask.permute(2, 0, 1)
+
+
+            # # 可視化
+            # figure, ax = plt.subplots(nrows=2, ncols=2, figsize=(5, 8))
+            # ax[0,0].imshow(img.permute(1, 2, 0))#img画像は正規化しているため色味がおかしい
+            # ax[0,1].imshow(mask[0,:,:])
+
+            return img, image_path
+
 
 
 # train_dataset = LoadDataSet(TRAIN_PATH, transform=get_train_transform())
@@ -438,8 +478,8 @@ def visualize_training_predict(org_batchs, msk_batchs, pred_batchs, workDir:str,
     # for img_no in tqdm(range(0, n_images)):
     tm  = pred_batchs[random_index].data.cpu().numpy()
     tm  = tm.squeeze()
-    img = org_batchs[random_index].data.cpu()
-    msk = msk_batchs[random_index].data.cpu()
+    img = org_batchs[random_index].data.cpu().numpy()
+    msk = msk_batchs[random_index].data.cpu().numpy()
     img = format_image(img)
     msk = format_mask(msk)
 
