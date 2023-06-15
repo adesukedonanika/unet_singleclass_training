@@ -35,17 +35,12 @@ resizeValue = int(sys.argv[4])
 
 
 TRAIN_PATH = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512_rotate_flipMirror"
-
 # os.makedirs(TRAIN_PATH,exist_ok=True)
 
-
-
-
-from fpathutils import get_mskPath
 from u_net_pytorch import get_train_transform, LoadDataSet
 
 
-train_dataset = LoadDataSet(TRAIN_PATH, transform=get_train_transform())
+train_dataset = LoadDataSet(TRAIN_PATH, resizeValue, transform=get_train_transform(resizeValue))
 print("datasets count\t",train_dataset.__len__())
 
 image, mask = train_dataset.__getitem__(3)
@@ -60,14 +55,17 @@ train_size=int(np.round(train_dataset.__len__()*(1 - split_valid_ratio),0))
 valid_size=int(np.round(train_dataset.__len__()*split_valid_ratio,0))
 
 # BATCHSIZE = train_dataset.__len__()//20
-
 # BATCHSIZE = 8
+
 train_data, valid_data = random_split(train_dataset, [train_size, valid_size])
 train_loader = DataLoader(dataset=train_data, batch_size=BATCHSIZE, shuffle=True)
 val_loader = DataLoader(dataset=valid_data, batch_size=BATCHSIZE)
 
+if num_epochs<=20:
+    modelID = f"Test_data{train_dataset.__len__()}_modelResize-{str(resizeValue).zfill(4)}_batch{BATCHSIZE}_epoch{num_epochs}_class-{className}"
+else:
+    modelID = f"data{train_dataset.__len__()}_modelResize-{str(resizeValue).zfill(4)}_batch{BATCHSIZE}_epoch{num_epochs}_class-{className}"
 
-modelID = f"data{train_dataset.__len__()}_modelResize-{str(resizeValue).zfill(4)}_batch{BATCHSIZE}_epoch{num_epochs}_class-{className}"
 
 workDir = "04_trainingModel"
 workDir = os.path.join(workDir, modelID)
@@ -79,41 +77,10 @@ print("Length of validation　data:\t{}".format(len(valid_data)))
 print("Length of ALL　data:\t\t{}".format(train_dataset.__len__()))
 
 
-# 続いてU-Netのモデルを実装します。モデルについては解説記事か以下のサイトをご参照ください。
-# https://www.researchgate.net/figure/U-net-Convolutional-Neural-Network-model-The-U-net-model-contains-two-parts_fig6_317493482
-# 　　　 
-# 
-# こちらを元に実装をしていきます。
-
-# U-Netモデルにおいては細かい構成というよりはモデルの全体構成から把握していった方が理解がしやすいと思いました。
-# 
-# U-Net解説記事にも記載してあります通り、
-# 
-# ①FCNにあたる部分、
-# 
-# ②Up Samplingにあたる部分、
-# 
-# ③Skip Connectionにあたる部分
-# 
-# をまず把握します。
-# 
-# 以下のコードコメント文にそれぞれがどこに該当するかを記載しています。
-# 
-# Skip Connectionはtorch.catによりFCN時の出力と合わせています。
-# 
-# conv_bn_relu関数は畳み込みとバッチ正規化と活性化関数Reluをまとめています。
-
-# セマンティックセグメンテーションの損失関数としてはBCELoss(Binary Cross Entropy)をベースとしたDiceBCELossがよく用いられます。詳細な説明とコードは以下に記載があります。https://www.kaggle.com/bigironsphere/loss-function-library-keras-pytorch
-# 
-# 考え方としてはIoUに近く、予測した範囲が過不足なく教師データとなる領域を捉えているほど損失が低くなります。
-
-# In[15]:
-
-
 import u_net_pytorch
 import importlib
 importlib.reload(u_net_pytorch)
-from u_net_pytorch import UNet, down_pooling, conv_bn_relu, up_pooling, IoU, DiceBCELoss, DiceLoss, save_ckp, load_ckp
+from u_net_pytorch import UNet, IoU, DiceBCELoss, DiceLoss, save_ckp, load_ckp, format_image, format_mask
 
 
 #<---------------各インスタンス作成---------------------->
@@ -123,15 +90,6 @@ optimizer = torch.optim.Adam(model.parameters(),lr = 1e-3)
 criterion = DiceLoss()
 accuracy_metric = IoU()
 valid_loss_min = np.Inf
-
-
-# In[ ]:
-
-
-
-
-
-# In[16]:
 
 
 checkpoint_path = os.path.join(workDir,'chkpoint_')
@@ -195,6 +153,7 @@ for epoch in range(num_epochs):
       total_valid_score.append(np.mean(valid_score))
       print(f"Train Loss: {total_train_loss[-1]}, Train IOU: {total_train_score[-1]}",f"Valid Loss: {total_valid_loss[-1]}, Valid IOU: {total_valid_score[-1]}")
 
+
       checkpoint = {
           'epoch': epoch + 1,
           'valid_loss_min': total_valid_loss[-1],
@@ -213,70 +172,23 @@ for epoch in range(num_epochs):
           print(checkpoint_path)
 
       print("")
+      
+      if epoch%10==0:
 
-csvPath = os.path.join(workDir,f"scoreSheet_{modelID}_unet.csv")
-score = {
-    # "epoch" : range(1,num_epochs+1),
-    "train_Loss" : total_train_loss,
-    "valid__Loss" : total_valid_loss,
-    "train_scoreIoU" : total_train_score,
-    "valid__scoreIoU" : total_valid_score,
-    }
-
-import pandas as pd
-
-df_score = pd.DataFrame(score, index=range(1,num_epochs+1))
-df_score.to_csv(csvPath)
-print("saved Score\n",csvPath)
+          csvPath = os.path.join(workDir,f"scoreSheet_{modelID}_unet.csv")
+          score = {
+          # "epoch" : range(1,num_epochs+1),
+          "train_Loss" : total_train_loss,
+          "valid__Loss" : total_valid_loss,
+          "train_scoreIoU" : total_train_score,
+          "valid__scoreIoU" : total_valid_score,
+          }
 
 
-# In[17]:
+          df_score = pd.DataFrame(score, index=range(1,num_epochs+1))
+          df_score.to_csv(csvPath)
+          print("saved Score\n",csvPath)
 
-
-# !pip install seaborn
-import seaborn as sns
-
-def plotScore(csvPath:str, strSize:int):
-
-    df = pd.read_csv(csvPath)
-    plt.figure(1)
-    plt.figure(figsize=(15,5))
-    sns.set_style(style="darkgrid")
-    plt.subplot(1, 2, 1)
-    sns.lineplot(x=range(1,len(df)+1), y=df["train_Loss"], label="Train Loss")
-    sns.lineplot(x=range(1,len(df)+1), y=df["valid__Loss"], label="Valid Loss")
-    # plt.title("Loss")
-    plt.legend(fontsize=strSize)
-
-    lossYrangeMax = df[["train_Loss",	"valid__Loss"]].max().max()
-    lossYrangeMin = df[["train_Loss",	"valid__Loss"]].min().min()
-    lossYrangeMax = round(lossYrangeMax, 2)
-    lossYrangeMin = round(lossYrangeMin, 2)
-    print(lossYrangeMin, lossYrangeMax)
-    plt.yticks(np.arange(lossYrangeMin, lossYrangeMax+0.1, step=0.2))
-    plt.title("Loss")
-    plt.xlabel("epochs",fontsize=strSize)
-    plt.ylabel("DiceLoss",fontsize=strSize,labelpad=-20)
-    plt.tick_params(labelsize=strSize)
-
-
-    plt.subplot(1, 2, 2)
-    sns.lineplot(x=range(1,len(df)+1), y=df["train_scoreIoU"], label="Train Score")
-    sns.lineplot(x=range(1,len(df)+1), y=df["valid__scoreIoU"], label="Valid Score")
-    # plt.title("Score (IoU)")
-    plt.yticks(np.arange(0, 1.1, step=0.1))
-    plt.legend(fontsize=strSize)
-    plt.title("Score (IoU)")
-    plt.xlabel("epochs",fontsize=strSize)
-    plt.ylabel("IoU",fontsize=strSize,labelpad=-30)
-    plt.tick_params(labelsize=strSize)
-
-    figPath = os.path.join(workDir,f"Unet_score_{os.path.basename(csvPath)}.png")
-    plt.savefig(figPath,facecolor="azure", bbox_inches='tight', pad_inches=0)
-    print(figPath)
-    # plt.show()
-
-plotScore(csvPath,10)
 
 
 import seaborn as sns
@@ -303,45 +215,17 @@ plt.tick_params(labelsize=18)
 plt.savefig(os.path.join(workDir,f"Unet_score_{modelID}.png"))
 # plt.show()
 
-df_score
 
 
 # ## ④U-Netモデルの性能評価の確認
-
-# ### 出力したcsvで可視化
-
-# 学習と評価が終了しましたので、エポックごとの損失、精度の変化をグラフ化します。
-
-# 以上の通り、エポックが進むにつれて損失が減り、精度が向上していることがわかります。これは機械学習においてはモデルの学習が進み、より汎化性能（予測性能）が増して行っていることを意味しています。
-
-# 次に、作成した学習したモデルを利用して、実際のモデルによるセマンティックセグメンテーションの結果を表示してみましょう。
-# 
-# まず作成したモデルを読み込みます。
-
-# 
-
-# In[18]:
-
-
-# !ls training/classConifer_data440_batch22_epoch100
-
-
-# In[19]:
-
-
 best_model_path = os.path.join(workDir,'bestmodel.pt')
 model, optimizer, start_epoch, valid_loss_min = load_ckp(best_model_path, model, optimizer)
 
-
-# In[20]:
 
 
 
 
 # 続いて入力画像と教師データ、モデルによる出力を表示する関数を用意し、出力を行います。
-
-# In[21]:
-
 
 outImagePath = os.path.join(workDir,modelID,"OutImages")
 os.makedirs(outImagePath,exist_ok=True)

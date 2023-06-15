@@ -42,14 +42,14 @@ import torch.nn.functional as F
 from PIL import Image
 from torch import nn
 import zipfile
-
+from fpathutils import get_mskPath
 import random
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # ②データの前処理  
 #画像データ拡張の関数
-def get_train_transform():
+def get_train_transform(resizeValue):
    return A.Compose(
        [
         #リサイズ(こちらはすでに適用済みなのでなくても良いです)
@@ -74,10 +74,11 @@ def mask2single(mask,values:list):
 
 #Datasetクラスの定義
 class LoadDataSet(Dataset):
-        def __init__(self,path, transform=None):
+        def __init__(self,path,resizeValue, transform=None):
             self.path = path
             self.folders = os.listdir(path)
-            self.transforms = get_train_transform()
+            self.transforms = get_train_transform(resizeValue)
+            self.resizeValue = resizeValue
         
         def __len__(self):
             return len(self.folders)
@@ -86,6 +87,7 @@ class LoadDataSet(Dataset):
         def __getitem__(self,idx):
             image_path = os.path.join(self.path, self.folders[idx])
             mask_path = get_mskPath(os.path.join(self.path, self.folders[idx]))
+            resizeValue = self.resizeValue
             # image_path = os.path.join(image_folder,os.listdir(image_folder)[idx])
             
             #画像データの取得
@@ -168,6 +170,34 @@ def visualize_dataset(n_images, predict=None):
     plt.tight_layout()
     plt.show()
 
+
+# 続いてU-Netのモデルを実装します。モデルについては解説記事か以下のサイトをご参照ください。
+# https://www.researchgate.net/figure/U-net-Convolutional-Neural-Network-model-The-U-net-model-contains-two-parts_fig6_317493482
+# 　　　 
+# 
+# こちらを元に実装をしていきます。
+
+# U-Netモデルにおいては細かい構成というよりはモデルの全体構成から把握していった方が理解がしやすいと思いました。
+# 
+# U-Net解説記事にも記載してあります通り、
+# 
+# ①FCNにあたる部分、
+# 
+# ②Up Samplingにあたる部分、
+# 
+# ③Skip Connectionにあたる部分
+# 
+# をまず把握します。
+# 
+# 以下のコードコメント文にそれぞれがどこに該当するかを記載しています。
+# 
+# Skip Connectionはtorch.catによりFCN時の出力と合わせています。
+# 
+# conv_bn_relu関数は畳み込みとバッチ正規化と活性化関数Reluをまとめています。
+
+# セマンティックセグメンテーションの損失関数としてはBCELoss(Binary Cross Entropy)をベースとしたDiceBCELossがよく用いられます。詳細な説明とコードは以下に記載があります。https://www.kaggle.com/bigironsphere/loss-function-library-keras-pytorch
+# 
+# 考え方としてはIoUに近く、予測した範囲が過不足なく教師データとなる領域を捉えているほど損失が低くなります。
 
 # UNet 
 class UNet(nn.Module):
@@ -350,6 +380,51 @@ def getImgNo_fromImgPaths(paths):
             numbers.append(number)
 
     return numbers
+
+
+
+# !pip install seaborn
+import seaborn as sns
+
+def plotScore(csvPath:str, strSize:int):
+
+    df = pd.read_csv(csvPath)
+    plt.figure(1)
+    plt.figure(figsize=(15,5))
+    sns.set_style(style="darkgrid")
+    plt.subplot(1, 2, 1)
+    sns.lineplot(x=range(1,len(df)+1), y=df["train_Loss"], label="Train Loss")
+    sns.lineplot(x=range(1,len(df)+1), y=df["valid__Loss"], label="Valid Loss")
+    # plt.title("Loss")
+    plt.legend(fontsize=strSize)
+
+    lossYrangeMax = df[["train_Loss",	"valid__Loss"]].max().max()
+    lossYrangeMin = df[["train_Loss",	"valid__Loss"]].min().min()
+    lossYrangeMax = round(lossYrangeMax, 2)
+    lossYrangeMin = round(lossYrangeMin, 2)
+    print(lossYrangeMin, lossYrangeMax)
+    plt.yticks(np.arange(lossYrangeMin, lossYrangeMax+0.1, step=0.2))
+    plt.title("Loss")
+    plt.xlabel("epochs",fontsize=strSize)
+    plt.ylabel("DiceLoss",fontsize=strSize,labelpad=-20)
+    plt.tick_params(labelsize=strSize)
+
+
+    plt.subplot(1, 2, 2)
+    sns.lineplot(x=range(1,len(df)+1), y=df["train_scoreIoU"], label="Train Score")
+    sns.lineplot(x=range(1,len(df)+1), y=df["valid__scoreIoU"], label="Valid Score")
+    # plt.title("Score (IoU)")
+    plt.yticks(np.arange(0, 1.1, step=0.1))
+    plt.legend(fontsize=strSize)
+    plt.title("Score (IoU)")
+    plt.xlabel("epochs",fontsize=strSize)
+    plt.ylabel("IoU",fontsize=strSize,labelpad=-30)
+    plt.tick_params(labelsize=strSize)
+
+    figPath = os.path.join(os.path.dirname(csvPath),f"Unet_score_{os.path.basename(csvPath)}.png")
+    plt.savefig(figPath,facecolor="azure", bbox_inches='tight', pad_inches=0)
+    print(figPath)
+    # plt.show()
 
 
 
