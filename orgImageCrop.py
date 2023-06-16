@@ -119,3 +119,68 @@ def crop4CornersOrgImageBysize(imgPath:str, cropSize:int):
     Image.fromarray(img[y_start : y_end, x_start : x_end].copy()).save(imgSavePath)
     
     return saveImgDIr
+
+
+def getCropAndLapPositions(imgPath:str,cropSize:int,lapSize:int):
+
+    step_x_col, step_y_row, resizeSetSlide = getXYtileInfo(imgPath, cropSize, lapSize)
+    # np.array[height : width : ch]の構造　
+    # imgNp_true_resized.shape = (h, w, ch)
+
+    CropAndLapPositions = []
+
+
+    print("Create Tiles ImageSize:{0}, LapSize:{1}".format(cropSize, lapSize))
+    for y in range(step_y_row):
+        # print("\n\n")
+        for x in range(step_x_col):
+
+            # print("\n","x, y =", x, y )
+            if lapSize==0:
+                x_start = x*cropSize
+                x_end = x*cropSize + cropSize
+                y_start = y*cropSize
+                y_end = y*cropSize + cropSize
+            else:
+                x_start = x*lapSize
+                x_end = x*lapSize + cropSize
+                y_start = y*lapSize
+                y_end = y*lapSize + cropSize
+            
+            cropPositon =(x_start, x_end, y_start, y_end)
+            CropAndLapPositions.append(cropPositon)
+    return CropAndLapPositions
+    
+
+def cropImgBylapsize(imgPath,cropSize,lapSize):
+
+    img_pil = Image.open(imgPath)
+
+    img = np.array(img_pil)
+    # imgNp_true_resized[height : width : ch]の構造　 imgNp_true_resized.shape = (h, w, ch)
+
+    # print("Resize Image SIze", img.shape)
+    # print("Create Tiles ImageSize:{0}, LapSize:{1}".format(cropSize, lapSize))
+
+    CropAndLapPositions = getCropAndLapPositions(imgPath,cropSize,lapSize)
+    for cropPositon in CropAndLapPositions:
+        x_start, x_end, y_start, y_end = cropPositon
+
+        xyStr = "X" + str(x_start).zfill(5) + "to" + str(x_end).zfill(5) + "_" + "Y" + str(y_start).zfill(5) + "to" + str(y_end).zfill(5)
+        saveImgDIr = os.path.dirname(imgPath) + "_Size" +str(cropSize).zfill(4) + "_lap" + str(lapSize) + "\\"
+        os.makedirs(saveImgDIr, exist_ok=True)
+        saveImgPath = saveImgDIr + os.path.basename(imgPath).split(".")[-2] + "_" + xyStr + "." + os.path.basename(imgPath).split(".")[-1].replace("JPG","jpg").replace("PNG","png")
+
+        # org処理            
+        if img_pil.mode == 'RGB':
+            imgNp = img[x_start : x_end, y_start : y_end, :].copy()
+            if imgNp.shape[0]==imgNp.shape[1]:
+                crpoImg_org = Image.fromarray(imgNp)
+                crpoImg_org.save(saveImgPath)
+            
+        # msk処理
+        else:
+            imgNp = img[x_start : x_end, y_start : y_end].copy()
+            if imgNp.shape[0]==imgNp.shape[1]:
+                cropImg_msk = Image.fromarray(imgNp)
+                cropImg_msk.save(saveImgPath)
