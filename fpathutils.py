@@ -39,3 +39,7 @@ def addSavePath(Path,addKeyword):
     Path_added = os.path.dirname(Path) + "/" + os.path.basename(Path).split(".")[0] + "_" + str(addKeyword) + "." + os.path.basename(Path).split(".")[1]
     return Path_added
 
+def addStrBeforeExt(filePath:str,addStr:str):
+    # ファイル名末尾に指定の文字列を追加して、拡張子を変えずに改名した文字列を返す
+    filePath_list = filePath.split(".")
+    return f"{filePath_list[-2]}_{addStr}.{filePath_list[-1]}"

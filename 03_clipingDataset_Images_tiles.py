@@ -10,10 +10,9 @@ import os,glob,sys,shutil,re,json
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image, ImageOps
-import albumentations as A
+from PIL import Image
 from tqdm import tqdm
-import rasterio
+from orgImageCrop import crop4CornersOrgImageBysize, getXYtileInfo
 
 
 # In[24]:
@@ -81,103 +80,15 @@ for treeType in treeTypes:
             mskPaths.remove(path)
 
 
-    def getXYtileInfo(predictImgPath,cropSize,lapSize):
-        img_io = rasterio.open(predictImgPath)
-        org_height, org_width, ch = img_io.height, img_io.width, img_io.count
-        img_io.close()
-        print("OriginalSize\t",org_height, org_width, ch)
 
-        predictImgSize = cropSize
-
-        if lapSize == 0:
-            step_x_col = org_width//predictImgSize
-            step_y_row = org_height//predictImgSize
-        else:
-            step_x_col = (org_width - (predictImgSize - lapSize))// lapSize
-            step_y_row = (org_height - (predictImgSize - lapSize))// lapSize
-        # step_x_col = org_width - (org_width % lapSize))
-        # step_y_row = org_height - (org_height % lapSize)
-
-
-        resizeSetSlide = ((org_height // cropSize) * cropSize, org_width // cropSize * cropSize)
-        
-        print(step_x_col, step_y_row, resizeSetSlide)
-        return step_x_col, step_y_row, resizeSetSlide
-
-    print("resize\t",getXYtileInfo(orgPaths[0],cropSize,lapSize))
-
-    def addStrBeforeExt(filePath:str,addStr:str):
-        filePath_list = filePath.split(".")
-        return f"{filePath_list[-2]}_{addStr}.{filePath_list[-1]}"
-
-
-
-    def crop4CornersOrgImageByLapsize(imgPath:str, cropSize:int, lapSize:int):
-
-        img = Image.open(imgPath)
-        img = np.array(img)
-
-        width = img.shape[1]
-        height = img.shape[0]
-
-        step_x_col, step_y_row, resizeSetSlide = getXYtileInfo(imgPath, cropSize, lapSize)
-        # resizeSetSlide = (y, x)
-        # img.shape = (y, x, ch)
-
-        x_amari = img.shape[1]-resizeSetSlide[1]
-        y_amari = img.shape[0]-resizeSetSlide[0]
-
-        saveImgDIr = os.path.dirname(imgPath) + f"_crop4Corner_{resizeSetSlide[1]}_{resizeSetSlide[0]}\\"
-        os.makedirs(saveImgDIr, exist_ok=True)
-
-        x_start = 0
-        x_end = resizeSetSlide[1]
-        y_start = 0
-        y_end = resizeSetSlide[0]
-
-        # print(x_start,x_end,y_start,y_end,x_amari,y_amari)
-
-        # upperLeftRect =(x_start, x_end, y_start, y_end)
-        imgSavePath = saveImgDIr + os.path.basename(addStrBeforeExt(imgPath,"01_upperL_rect"))
-        Image.fromarray(img[y_start : y_end, x_start : x_end].copy()).save(imgSavePath)
-
-        x_start = width - cropSize
-        x_end = width
-        y_start = 0
-        y_end = resizeSetSlide[0]
-
-        # upperRightRect =(x_start, x_end, y_start, y_end)
-        imgSavePath = saveImgDIr + os.path.basename(addStrBeforeExt(imgPath,"02upperR_rect"))
-        Image.fromarray(img[y_start : y_end, x_start : x_end].copy()).save(imgSavePath)
-
-        x_start = 0
-        x_end = resizeSetSlide[1]
-        y_start = height - cropSize
-        y_end = height
-
-        lowerLeftRect =(x_start, x_end, y_start, y_end)
-        imgSavePath = saveImgDIr + os.path.basename(addStrBeforeExt(imgPath,"03lowerL_rect"))
-        Image.fromarray(img[y_start : y_end, x_start : x_end].copy()).save(imgSavePath)
-
-
-        x_start = width - cropSize
-        x_end = width
-        y_start = height - cropSize
-        y_end = height
-
-        lowerRightRect =(x_start, x_end, y_start, y_end)
-        imgSavePath = saveImgDIr + os.path.basename(addStrBeforeExt(imgPath,"04lowerR_rect"))
-        Image.fromarray(img[y_start : y_end, x_start : x_end].copy()).save(imgSavePath)
-        
-        return saveImgDIr
 
     orgPaths = glob.glob(os.path.join(cropArgmentDir,"org") + "/*.JPG")
     mskPaths = glob.glob(os.path.join(cropArgmentDir,"msk") + "/*.PNG")
 
     for orgPath in tqdm(orgPaths):
-        orgDir = crop4CornersOrgImageByLapsize(orgPath,cropSize,lapSize)
+        orgDir = crop4CornersOrgImageBysize(orgPath,cropSize)
         mskPath = orgPath.replace("org","msk").replace(".JPG",".PNG")
-        mskDir = crop4CornersOrgImageByLapsize(mskPath,cropSize,lapSize)
+        mskDir = crop4CornersOrgImageBysize(mskPath,cropSize)
     orgPaths = glob.glob(orgDir + "/*_*Rect.JPG")
     mskPaths = glob.glob(mskDir + "/*_*Rect.PNG")
 
