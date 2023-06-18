@@ -6,7 +6,7 @@
 
 # !pip install -r requirements_uavUnet.txt --user
 
-import os,glob,shutil,json
+import os,glob,shutil,json,sys
 from tqdm import tqdm
 from orgImageCrop import crop4CornersOrgImageBysize, cropImgBylapsize
 
@@ -45,13 +45,16 @@ def main():
         orgPaths = glob.glob(os.path.join(cropArgmentDir,"org") + "/*.JPG")
         mskPaths = glob.glob(os.path.join(cropArgmentDir,"msk") + "/*.PNG")
 
-        print(len(orgPaths))
-        print(len(orgPaths)==len(mskPaths))
-        print(orgPaths[0],mskPaths[0])
+        # print(len(orgPaths))
+        # print(len(orgPaths)==len(mskPaths))
+        # print(orgPaths[0],mskPaths[0])
 
-        cropSize = 1024
-        lapSize = (cropSize//2)
-        print(lapSize)
+        cropSize = int(sys.argv[1])
+        if cropSize == 256:
+            lapSize=0
+        else:
+            lapSize = (cropSize//2)
+        # print(lapSize)
 
         for path in orgPaths:
             if os.path.basename(path) == "Thumbs.db":
@@ -89,7 +92,6 @@ def main():
     mskPaths = glob.glob(mskDir[:-1] + f"_Size{cropSize}_lap{lapSize}/*.png")
 
     print(len(orgPaths),len(mskPaths))
-
 
 # スクリプトが直接実行された場合にのみmain()関数を呼び出す
 if __name__ == "__main__":

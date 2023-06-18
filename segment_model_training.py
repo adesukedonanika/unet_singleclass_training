@@ -91,29 +91,6 @@ def rotateSave(imgPath, SaveDir, angleMax:int, angleInterval:90):
             print(SavePath_rotate,imgPil_rotate.mode)
 
 
-def argmentDataset(orgDir, rotate=True, flipMirror=True):
-    #Rotate処理
-    imgPaths = glob.glob(os.path.join(orgDir,"*.jpg"))
-    print("image Rotate")
-    for imgPath in tqdm(imgPaths):
-        if rotate:
-            rotateSave(imgPath, SaveDir=os.path.dirname(imgPath)+"_rotate", angleMax=270, angleInterval=90)
-            mskPath = convMskPath(imgPath)
-            rotateSave(mskPath, SaveDir=os.path.dirname(mskPath)+"_rotate", angleMax=270, angleInterval=90)
-                
-    #フリップ、ミラー処理
-    print("image flipMirror")
-    imgPaths = glob.glob(os.path.join(os.path.dirname(imgPaths[0])+"_rotate","*.jpg"))
-    for imgPath in tqdm(imgPaths):
-        if flipMirror:
-            flipMirrorSave(imgPath, SaveDir=os.path.dirname(imgPath)+"_flipMirror")
-            mskPath = convMskPath(imgPath)
-            flipMirrorSave(mskPath, SaveDir=os.path.dirname(mskPath)+"_flipMirror")
-
-    imgPaths = glob.glob(os.path.join(os.path.dirname(imgPaths[0])+"_flipMirror","*.jpg"))
-    orgDir = os.path.dirname(imgPaths[0])
-    return orgDir
-
 
 
 def calculate_statistics(image_paths):

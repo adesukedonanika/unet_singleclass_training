@@ -32,16 +32,22 @@ className =sys.argv[1]
 num_epochs=int(sys.argv[2])
 BATCHSIZE = int(sys.argv[3])
 resizeValue = int(sys.argv[4])
+datasetDirName = sys.argv[5]
 
+# orgDir = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512_rotate_flipMirror"
+# orgDir = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512"
+orgDir = f"03_datasetforModel\\Forest tsumura 2 50m P4Pv2_{className}\\{datasetDirName}"
 
-TRAIN_PATH = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512_rotate_flipMirror"
-# TRAIN_PATH = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512"
-# os.makedirs(TRAIN_PATH,exist_ok=True)
+if not "rotate_flipMirror" in orgDir:
+    from segment_model_training import argmentDataset
+    orgDir = argmentDataset(orgDir=orgDir)
+
+# os.makedirs(orgDir,exist_ok=True)
 
 from u_net_pytorch import get_train_transform, LoadDataSet
 
 
-train_dataset = LoadDataSet(TRAIN_PATH, resizeValue, transform=get_train_transform(resizeValue))
+train_dataset = LoadDataSet(orgDir, resizeValue, transform=get_train_transform(resizeValue))
 print("datasets count\t",train_dataset.__len__())
 
 image, mask = train_dataset.__getitem__(3)
@@ -235,7 +241,7 @@ model, optimizer, start_epoch, valid_loss_min = load_ckp(best_model_path, model,
 outImagePath = os.path.join(workDir,modelID,"OutImages")
 os.makedirs(outImagePath,exist_ok=True)
 
-predict_orgPaths = glob.glob(os.path.join(TRAIN_PATH,"DJI_0065*.jpg"))
+predict_orgPaths = glob.glob(os.path.join(orgDir,"DJI_0065*.jpg"))
 predict_orgPaths = random.sample(predict_orgPaths, 3)
 
 

@@ -167,7 +167,7 @@ def cropImgBylapsize(imgPath,cropSize,lapSize):
         x_start, x_end, y_start, y_end = cropPositon
 
         xyStr = "X" + str(x_start).zfill(5) + "to" + str(x_end).zfill(5) + "_" + "Y" + str(y_start).zfill(5) + "to" + str(y_end).zfill(5)
-        saveImgDIr = os.path.dirname(imgPath) + "_Size" +str(cropSize).zfill(4) + "_lap" + str(lapSize) + "\\"
+        saveImgDIr = os.path.dirname(imgPath) + "_Size" +str(cropSize).zfill(4) + "_lap" + str(lapSize).zfill(4) + "\\"
         os.makedirs(saveImgDIr, exist_ok=True)
         saveImgPath = saveImgDIr + os.path.basename(imgPath).split(".")[-2] + "_" + xyStr + "." + os.path.basename(imgPath).split(".")[-1].replace("JPG","jpg").replace("PNG","png")
 
