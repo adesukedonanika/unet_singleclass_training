@@ -82,11 +82,11 @@ def makeSingleMaskSets(orgPaths:list,mskPaths:list,treeTypes:dict):
             cv2.imwrite(os.path.join(mergedMasksDir,orgImgName+".PNG"), msk_base)
 
             # 2つの画像を横に並べる
-            fig, axs = plt.subplots(1, 2)
-            axs[0].imshow(org)
-            axs[1].imshow(msk_base, cmap='gray')
-            # 表示する
-            plt.show()
+            # fig, axs = plt.subplots(1, 2)
+            # axs[0].imshow(org)
+            # axs[1].imshow(msk_base, cmap='gray')
+            # # 表示する
+            # # plt.show()
             del org,msk_base,msk
 
 
@@ -122,12 +122,12 @@ def makeMultiMaskSets(orgPaths:list,mskPaths:list,treeTypes:dict):
         print(mskPath_merged)
         cv2.imwrite(mskPath_merged, msk_base)
 
-        # 2つの画像を横に並べる
-        fig, axs = plt.subplots(1, 2)
-        axs[0].imshow(org)
-        axs[1].imshow(msk_base, cmap='gray')
-        # 表示する
-        plt.show()
+        # # 2つの画像を横に並べる
+        # fig, axs = plt.subplots(1, 2)
+        # axs[0].imshow(org)
+        # axs[1].imshow(msk_base, cmap='gray')
+        # # 表示する
+        # # plt.show()
         del org,msk
         del msk_base
 
