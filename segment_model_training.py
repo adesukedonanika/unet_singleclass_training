@@ -313,6 +313,7 @@ def visualize_dataset(n_images, predict=None):
         ax[i, 1].set_axis_off()
     plt.tight_layout()
     plt.show()
+    plt.close()
 
 # visualize_dataset(2)
 
@@ -383,8 +384,8 @@ def showPred(img_show, msk_show, pred,mean_values:list,std_deviation:list,workDi
     plt.tight_layout()
     if imgSave:
         plt.savefig(workDir + f"traingSet_Epoch{str(epoch+1)}_{modelID}.png")
-    plt.clf()
     plt.close()
+    plt.clf()
     del figure, ax, im, img_show, msk_show, pred, pred_msk
 
 

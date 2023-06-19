@@ -209,6 +209,8 @@ def visualize_dataset(n_images, predict=None):
         ax[i, 1].set_axis_off()
     plt.tight_layout()
     plt.show()
+    plt.close()
+
 
 
 # 続いてU-Netのモデルを実装します。モデルについては解説記事か以下のサイトをご参照ください。
@@ -470,7 +472,6 @@ def plotScore(csvPath:str, strSize:int):
 
 def visualize_training_predict(org_batchs, msk_batchs, pred_batchs, workDir:str, maskRGB:bool,imgSave:bool):
 
-    figure, ax = plt.subplots(nrows=1, ncols=3, figsize=(6, 2))
 
     batchsize = org_batchs.shape[0]
     random_index = np.random.randint(batchsize)
@@ -515,6 +516,7 @@ def visualize_training_predict(org_batchs, msk_batchs, pred_batchs, workDir:str,
     cv2.imwrite(outImagePath_pred,tm)
 
 
+    # figure, ax = plt.subplots(nrows=1, ncols=3, figsize=(6, 2))
     # ax[0].imshow(img)
     # ax[1].imshow(msk)
     # ax[2].imshow(tm)

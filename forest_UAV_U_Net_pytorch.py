@@ -38,9 +38,6 @@ datasetDirName = sys.argv[5]
 # orgDir = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512"
 orgDir = f"03_datasetforModel\\Forest tsumura 2 50m P4Pv2_{className}\\{datasetDirName}"
 
-if not "rotate_flipMirror" in orgDir:
-    from segment_model_training import argmentDataset
-    orgDir = argmentDataset(orgDir=orgDir)
 
 # os.makedirs(orgDir,exist_ok=True)
 

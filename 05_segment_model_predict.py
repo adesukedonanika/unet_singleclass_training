@@ -275,6 +275,7 @@ def visualize_predict(model, n_images, imgSave=False):
             if imgSave:
                 plt.savefig(workDir + f"predictedSet_{modelID}.png")
             # plt.show()
+            plt.close()
 
 
 visualize_predict(model, 4, imgSave=True)
@@ -313,6 +314,8 @@ def visualize_images(outputImagesPaths, LabesName:str):
     plt.tight_layout()
     plt.savefig(os.path.join(os.path.dirname(orgPath), f"predictedSet_{LabesName}.png"))
     plt.show()
+    plt.close()
+
 
 visualize_images(outImagePath, treeType)
 
