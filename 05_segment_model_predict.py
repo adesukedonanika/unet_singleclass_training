@@ -35,17 +35,18 @@ import random
 
 
 
-treeType = sys.argv[1]
+treeType = "cedar"
 
 workDir = "./04_trainingModel"
 
-checkpoint_path = f"04_trainingModel\\class{treeType}_data168_batch2_epoch200\\model\\{treeType}_chkpoint_"
-best_model_path = os.path.join(workDir,f'model/{treeType}_bestmodel.pt')
+checkpoint_path = f"04_trainingModel\\data2016_modelResize-0256_batch32_epoch200_class-cedar\\chkpoint_"
+best_model_path = os.path.join(os.path.dirname(checkpoint_path),f'bestmodel.pt')
 modelID = checkpoint_path.split("\\")[1]#"classcypress_data168_batch2_epoch100"#checkpoint_path.split("\\\\")[1]
 
 
 
-orgDir = sys.argv[2]#f"C:\\datas\\uav_cnn_{treeType}\\org_crop4Corner_5120_3072_Size1024_lap512"
+# orgDir = sys.argv[2]#f"C:\\datas\\uav_cnn_{treeType}\\org_crop4Corner_5120_3072_Size1024_lap512"
+orgDir = f"C:\\datas\\uav_cnn_{treeType}\\org_crop4Corner_5120_3072_Size1024_lap512"
 
 
 def calculate_statistics(folder_path):
@@ -85,22 +86,7 @@ def calculate_statistics(folder_path):
 # print(mean_values, std_deviation)
 mean_values, std_deviation = np.array([0.29874884,0.53215061,0.40219877]), np.array([0.14500768, 0.21275673, 0.1953213 ])
 
-#画像データ拡張の関数
-def get_train_transform():
-   return A.Compose(
-       [
-        # #リサイズ(こちらはすでに適用済みなのでなくても良いです)
-        # A.Resize(256, 256),
-        #正規化(こちらの細かい値はalbumentations.augmentations.transforms.Normalizeのデフォルトの値を適用)
-        # A.Normalize(),
-        A.Normalize(mean=mean_values, std=std_deviation),
-        #水平フリップ（pはフリップする確率）
-        # A.HorizontalFlip(p=0.5),
-        #垂直フリップ
-        # A.VerticalFlip(p=0.5),
-        # A.Rotate(limit=98, p=0.5),
-        ToTensor()
-        ])
+
 
 def mask2single(mask,values:list):
     for value in values:
@@ -118,56 +104,59 @@ def get_mskPath(orgPath):
     else:
         return ""
 
-#Datasetクラスの定義
-class LoadPredictDataSet(Dataset):
-        def __init__(self,path, transform=get_train_transform()):
-            self.path = path
-            self.folders = os.listdir(path)
-            self.transforms = transform
-        
+#画像データ拡張の関数
+def get_train_transform(resizeValue):
+   return A.Compose(
+       [
+        #リサイズ(こちらはすでに適用済みなのでなくても良いです)
+        A.Resize(resizeValue, resizeValue),
+        #正規化(こちらの細かい値はalbumentations.augmentations.transforms.Normalizeのデフォルトの値を適用)
+        # A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        A.Normalize(),
+        #水平フリップ（pはフリップする確率）
+        # A.HorizontalFlip(p=0.25),
+        #垂直フリップ
+        # A.VerticalFlip(p=0.25),
+        ToTensor()
+        ])
+
+
+class LoadPredDataSet(Dataset):
+        def __init__(self,imgPaths,resizeValue, transform=None):
+            self.path = imgPaths
+            self.folders = [os.path.basename(imgPath) for imgPath in imgPaths]
+            self.transforms = get_train_transform(resizeValue)
+            self.resizeValue = resizeValue
+
         def __len__(self):
             return len(self.folders)
-              
-        
-        def __getitem__(self,idx):
-            image_folder = self.path
-            mask_folder = self.path.replace("org","msk")
-            orgPath = os.path.join(image_folder,os.listdir(image_folder)[idx])
-            mskPath = get_mskPath(orgPath)
-            print("imageName\t",os.path.basename(orgPath))
+
+
+        def __getitem__(self, idx):
+            image_path = self.path[idx]
+            # mask_path = get_mskPath(self.path[idx])
+            resizeValue = self.resizeValue
+
             #画像データの取得
-            img = io.imread(orgPath)[:,:,0:3].astype('float32')
-            # img = transform.resize(img,(256,256))
-            
-            height, width, _ = img.shape
-            
-            mask = self.get_mask(mskPath, height, width ).astype('float32')
+            img = io.imread(image_path)[:,:,0:3].astype('float32')
+            img = transform.resize(img,(resizeValue,resizeValue))
+
+            # mask = self.get_mask(mask_path, resizeValue, resizeValue ).astype('float32')
 
 
-            augmented = self.transforms(image=img, mask=mask)
-            # augmented key名　image, mask
+            augmented = self.transforms(image=img)
+            # augmented = self.transforms(image=img, mask=mask)
             img = augmented['image']
-            mask = augmented['mask']
-            mask = mask.permute(2, 0, 1)
+            # mask = augmented['mask']
+            # mask = mask.permute(2, 0, 1)
 
-            # mask = mask2single(mask, classValues)
 
             # # 可視化
             # figure, ax = plt.subplots(nrows=2, ncols=2, figsize=(5, 8))
             # ax[0,0].imshow(img.permute(1, 2, 0))#img画像は正規化しているため色味がおかしい
             # ax[0,1].imshow(mask[0,:,:])
 
-            return (img,mask) 
-
-        #マスクデータの取得
-        def get_mask(self, mskPath, IMG_HEIGHT, IMG_WIDTH):
-            mask = np.zeros((IMG_HEIGHT, IMG_WIDTH, 1), dtype=bool)
-            mask_ = io.imread(mskPath)
-            mask_ = transform.resize(mask_, (IMG_HEIGHT, IMG_WIDTH))
-            mask_ = np.expand_dims(mask_,axis=-1)
-            mask = np.maximum(mask, mask_)
-              
-            return mask
+            return img, image_path
 
 def format_image(img):
     # img torch.Size([1, 3, 1024, 1024]) を変換
@@ -205,20 +194,21 @@ os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
 from unet_model import UNet, DiceBCELoss, DiceLoss, IoU, save_ckp, load_ckp
 
 
-# model_init = UNet(3,1).cuda()
+model_init = UNet(3,1).cuda()
 
-from pre_segmentation_model import UnetModel, calculate_iou
-
-encoder_name = "resnet34"
-encoder_weight = "imagenet"
-
-model_init = UnetModel(encoder_name,encoder_weight,3,1)
+# from pre_segmentation_model import UnetModel, calculate_iou
+# encoder_name = "resnet34"
+# encoder_weight = "imagenet"
+# model_init = UnetModel(encoder_name,encoder_weight,3,1)
 
 optimizer = torch.optim.Adam(model_init.parameters(),lr = 1e-3)
 
 print("loading Model checkPoint")
 print(checkpoint_path)
 model, optimizer, start_epoch, valid_loss_min = load_ckp(checkpoint_fpath=checkpoint_path, model=model_init, optimizer=optimizer)
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+print(torch.cuda.is_available(),device)
+model.to(device)
 
 predictDir = "05_predicted"
 outImagePath = os.path.join(predictDir,modelID,"OutImages")
@@ -227,19 +217,16 @@ os.makedirs(outImagePath,exist_ok=True)
 
 
 
-predict_dataset = LoadPredictDataSet(orgDir, transform=get_train_transform())
-pred_loader = DataLoader(dataset=predict_dataset, batch_size=1)
 
-print(predict_dataset.__len__())
-
-
-
-def visualize_predict(model, n_images, imgSave=False):
+def visualize_predict(model, pred_loader, imgSave=False):
+    n_images = pred_loader.__len__()
     figure, ax = plt.subplots(nrows=n_images, ncols=3, figsize=(15, 5*n_images))
     with torch.no_grad():
         for img,msk in pred_loader:
             # img = img.cuda()#modelの重みは、cuda.Float.Tensorなので、cuda変換は不要
             # msk = msk.cuda()
+            if torch.cuda.is_available():
+                img = img.cuda()
             output = model(img)
             # break
             
@@ -247,16 +234,17 @@ def visualize_predict(model, n_images, imgSave=False):
                 tm=output[0][0].data.cpu().numpy()
                 img = img
                 msk = msk
-                print(tm.shape, img.shape, msk.shape)
+                # print(tm.shape, img.shape, msk.shape)
                 img = format_image(img)
                 msk = format_mask(msk)
 
 
-                outImagePath_pred = os.path.join(workDir,modelID,"OutImages",f"{img_no}_pred.png")
-                outImagePath_img = os.path.join(workDir,modelID,"OutImages",f"{img_no}_org.png")
-                outImagePath_msk = os.path.join(workDir,modelID,"OutImages",f"{img_no}_msk.png")
+                outImagePath_pred = os.path.join(workDir,modelID,"predOutImages",f"{img_no}_pred.png")
+                outImagePath_img = os.path.join(workDir,modelID,"predOutImages",f"{img_no}_org.png")
+                outImagePath_msk = os.path.join(workDir,modelID,"predOutImages",f"{img_no}_msk.png")
+                os.makedirs(os.path.dirname(outImagePath_pred) ,exist_ok=True)
 
-                print(tm.shape, img.shape, msk.shape)
+                # print(tm.shape, img.shape, msk.shape)
                 cv2.imwrite(outImagePath_pred,tm)
                 cv2.imwrite(outImagePath_img, img)
                 cv2.imwrite(outImagePath_msk,np.array(msk))
@@ -273,12 +261,16 @@ def visualize_predict(model, n_images, imgSave=False):
                 ax[img_no, 2].set_axis_off()
             plt.tight_layout()
             if imgSave:
-                plt.savefig(workDir + f"predictedSet_{modelID}.png")
+                plt.savefig(os.path.join(os.path.dirname(outImagePath_pred),f"predictedSet_{modelID}.png"))
             # plt.show()
             plt.close()
 
+predict_dataset = LoadPredictDataSet(orgDir, transform=get_train_transform())
+pred_loader = DataLoader(dataset=predict_dataset, batch_size=1)
 
-visualize_predict(model, 4, imgSave=True)
+print(predict_dataset.__len__())
+
+visualize_predict(model, pred_loader, imgSave=True)
 # visualize_predict(model, train_dataset.__len__()//20-1, imgSave=True)
 
 
@@ -317,6 +309,6 @@ def visualize_images(outputImagesPaths, LabesName:str):
     plt.close()
 
 
-visualize_images(outImagePath, treeType)
+# visualize_images(outImagePath, treeType)
 
 # outputImagesPaths = glob.glob("./training/classBamboo_data880_batch44_epoch100/classBamboo_data880_batch44_epoch100/OutImages/*_org.png")

@@ -9,7 +9,7 @@
 # ③U-Netのモデルの定義、トレーニング  
 # ④U-Netモデルの性能評価の確認
 
-import os, glob, sys
+import os, glob, sys, re
 from tqdm import tqdm
 import torch
 import pandas as pd
@@ -38,6 +38,7 @@ datasetDirName = sys.argv[5]
 # orgDir = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512"
 orgDir = f"03_datasetforModel\\Forest tsumura 2 50m P4Pv2_{className}\\{datasetDirName}"
 
+imageSize = re.search(".*_Size(\d+)_lap.*",datasetDirName).group(1)
 
 # os.makedirs(orgDir,exist_ok=True)
 
@@ -68,7 +69,7 @@ val_loader = DataLoader(dataset=valid_data, batch_size=BATCHSIZE)
 if num_epochs<=20:
     modelID = f"Test_data{train_dataset.__len__()}_modelResize-{str(resizeValue).zfill(4)}_batch{BATCHSIZE}_epoch{num_epochs}_class-{className}"
 else:
-    modelID = f"data{train_dataset.__len__()}_modelResize-{str(resizeValue).zfill(4)}_batch{BATCHSIZE}_epoch{num_epochs}_class-{className}"
+    modelID = f"data{train_dataset.__len__()}_imageSize-{imageSize}_modelResize-{str(resizeValue).zfill(4)}_batch{BATCHSIZE}_epoch{num_epochs}_class-{className}"
 
 
 workDir = "04_trainingModel"
@@ -222,7 +223,7 @@ plt.tick_params(labelsize=18)
 
 plt.savefig(os.path.join(workDir,f"Unet_score_{modelID}.png"))
 # plt.show()
-
+plt.close()
 
 
 # ## ④U-Netモデルの性能評価の確認

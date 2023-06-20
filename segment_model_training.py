@@ -263,7 +263,8 @@ class LoadDataSet(Dataset):
 
 
 
-def format_image(img,mean_values,std_deviation):
+# def format_image(img,mean_values,std_deviation):
+def format_image(img):
     img = np.array(np.transpose(img, (1,2,0)))
     #下は画像拡張での正規化を元に戻しています
     # mean = mean_values
