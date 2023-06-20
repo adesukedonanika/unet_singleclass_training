@@ -401,7 +401,11 @@ def save_ckp(state, is_best, checkpoint_path, best_model_path):
         shutil.copyfile(f_path, best_fpath)
 
 def load_ckp(checkpoint_fpath, model, optimizer):
-    checkpoint = torch.load(checkpoint_fpath)
+    if torch.cuda.is_available():
+        checkpoint = torch.load(checkpoint_fpath)
+    else:
+        checkpoint = torch.load(checkpoint_fpath, map_location=torch.device('cpu'))
+
     model.load_state_dict(checkpoint['state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer'])
     valid_loss_min = checkpoint['valid_loss_min']
