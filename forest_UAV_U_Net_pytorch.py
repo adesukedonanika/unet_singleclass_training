@@ -85,7 +85,8 @@ print("Length of ALL　data:\t\t{}".format(train_dataset.__len__()))
 import u_net_pytorch
 import importlib
 importlib.reload(u_net_pytorch)
-from u_net_pytorch import UNet, IoU, DiceBCELoss, DiceLoss, save_ckp, load_ckp, format_image, format_mask
+from u_net_pytorch import UNet, IoU, DiceBCELoss, DiceLoss, save_ckp, load_ckp, format_image, format_mask, EarlyStopping
+
 
 
 #<---------------各インスタンス作成---------------------->
@@ -106,6 +107,16 @@ total_train_score = []
 total_valid_loss = []
 total_valid_score = []
 
+# EarlyStoppingの初期化
+
+early_stopping = EarlyStopping(patience=10, delta=0.2)
+'''deltaを0.2に設定した場合、EarlyStoppingは検証損失が前回の最小値から
+0.2以上改善しない場合にカウンタをインクリメントします。
+つまり、前回の最小値が0.5だった場合、
+新しい損失が0.3以上であれば改善とみなされ、カウンタはリセットされます。
+しかし、新しい損失が0.5から0.7までの範囲であれば改善とみなされず、
+カウンタがインクリメントされます。我慢エポック数(patience)に達した時点で学習が停止します。
+'''
 
 importlib.reload(u_net_pytorch)
 from u_net_pytorch import visualize_training_predict
@@ -113,91 +124,99 @@ from u_net_pytorch import visualize_training_predict
 losses_value = 0
 for epoch in range(num_epochs):
     #<---------------トレーニング---------------------->
-      train_loss = []
-      train_score = []
-      valid_loss = []
-      valid_score = []
-      pbar = tqdm(train_loader, desc = 'description')
-      for x_train, y_train in pbar:
-          x_train = torch.autograd.Variable(x_train).cuda()
-          y_train = torch.autograd.Variable(y_train).cuda()
-          optimizer.zero_grad()
-          output = model(x_train)
-          ## 損失計算
-          loss = criterion(output, y_train)
-          losses_value = loss.item()
-          ## 精度評価
-          score = accuracy_metric(output,y_train)
-          loss.backward()
-          optimizer.step()
-          train_loss.append(losses_value)
-          train_score.append(score.item())
-          pbar.set_description(f"Epoch: {epoch+1}, loss: {losses_value}, IoU: {score}")
+    train_loss = []
+    train_score = []
+    valid_loss = []
+    valid_score = []
+    pbar = tqdm(train_loader, desc = 'description')
+    for x_train, y_train in pbar:
+        x_train = torch.autograd.Variable(x_train).cuda()
+        y_train = torch.autograd.Variable(y_train).cuda()
+        optimizer.zero_grad()
+        output = model(x_train)
+        ## 損失計算
+        loss = criterion(output, y_train)
+        losses_value = loss.item()
+        ## 精度評価
+        score = accuracy_metric(output,y_train)
+        loss.backward()
+        optimizer.step()
+        train_loss.append(losses_value)
+        train_score.append(score.item())
+        pbar.set_description(f"Epoch: {epoch+1}, loss: {losses_value}, IoU: {score}")
       #<---------------評価---------------------->
-      with torch.no_grad():
-          for image,mask in val_loader:
-              image = torch.autograd.Variable(image).cuda()
-              mask = torch.autograd.Variable(mask).cuda()
-              output = model(image)
-              ## 損失計算
-              loss = criterion(output, mask)
-              losses_value = loss.item()
-              ## 精度評価
-              score = accuracy_metric(output,mask)
-              valid_loss.append(losses_value)
-              valid_score.append(score.item())
+        with torch.no_grad():
+            for image,mask in val_loader:
+                image = torch.autograd.Variable(image).cuda()
+                mask = torch.autograd.Variable(mask).cuda()
+                output = model(image)
+                ## 損失計算
+                loss = criterion(output, mask)
+                losses_value = loss.item()
+                ## 精度評価
+                score = accuracy_metric(output,mask)
+                valid_loss.append(losses_value)
+                valid_score.append(score.item())
 
     
-              if epoch%10==0:
-                  visualize_training_predict(image,mask,output,workDir,True,True)
+            if epoch%10==0:
+                visualize_training_predict(image,mask,output,workDir,True,True)
 
             
-      total_train_loss.append(np.mean(train_loss))
-      total_train_score.append(np.mean(train_score))
-      total_valid_loss.append(np.mean(valid_loss))
-      total_valid_score.append(np.mean(valid_score))
-      print(f"Train Loss: {total_train_loss[-1]}, Train IOU: {total_train_score[-1]}",f"Valid Loss: {total_valid_loss[-1]}, Valid IOU: {total_valid_score[-1]}")
+        total_train_loss.append(np.mean(train_loss))
+        total_train_score.append(np.mean(train_score))
+        total_valid_loss.append(np.mean(valid_loss))
+        total_valid_score.append(np.mean(valid_score))
+        print(f"Train Loss: {total_train_loss[-1]}, Train IOU: {total_train_score[-1]}",f"Valid Loss: {total_valid_loss[-1]}, Valid IOU: {total_valid_score[-1]}")
 
 
-      checkpoint = {
+        checkpoint = {
           'epoch': epoch + 1,
           'valid_loss_min': total_valid_loss[-1],
           'state_dict': model.state_dict(),
           'optimizer': optimizer.state_dict(),
-      }
+        }
       
       # checkpointの保存
-      save_ckp(checkpoint, False, checkpoint_path, best_model_path)
+        save_ckp(checkpoint, False, checkpoint_path, best_model_path)
       
-      # 評価データにおいて最高精度のモデルのcheckpointの保存
-      if total_valid_loss[-1] <= valid_loss_min:
+        # 評価データにおいて最高精度のモデルのcheckpointの保存
+        if total_valid_loss[-1] <= valid_loss_min:
           print('Validation loss decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(valid_loss_min,total_valid_loss[-1]))
           save_ckp(checkpoint, True, checkpoint_path, best_model_path)
           valid_loss_min = total_valid_loss[-1]
           print(checkpoint_path)
 
-      print("")
       
-      if epoch%10==0:
+        if epoch%10==0:
 
-          csvPath = os.path.join(workDir,f"scoreSheet_{modelID}_unet.csv")
-          score = {
-          # "epoch" : range(1,num_epochs+1),
-          "train_Loss" : total_train_loss,
-          "valid__Loss" : total_valid_loss,
-          "train_scoreIoU" : total_train_score,
-          "valid__scoreIoU" : total_valid_score,
-          }
+            csvPath = os.path.join(workDir,f"scoreSheet_{modelID}_unet.csv")
+            score = {
+            # "epoch" : range(1,num_epochs+1),
+            "train_Loss" : total_train_loss,
+            "valid__Loss" : total_valid_loss,
+            "train_scoreIoU" : total_train_score,
+            "valid__scoreIoU" : total_valid_score,
+            }
 
-          print(len(total_train_loss))
-          print(len(total_valid_loss))
-          print(len(total_train_score))
-          print(len(total_valid_score))
+            print(len(total_train_loss))
+            print(len(total_valid_loss))
+            print(len(total_train_score))
+            print(len(total_valid_score))
 
-          df_score = pd.DataFrame(score, index=range(1,len(total_train_score)+1))
-          df_score.to_csv(csvPath)
-          print("saved Score\n",csvPath)
+            df_score = pd.DataFrame(score, index=range(1,len(total_train_score)+1))
+            df_score.to_csv(csvPath)
+            print("saved Score\n",csvPath)
 
+        # EarlyStoppingの評価
+        early_stopping(np.mean(valid_loss))
+
+        # EarlyStoppingが有効化された場合は学習を停止
+        if early_stopping.early_stop:
+            print("Epoch EarlyStop",epoch)
+            break
+
+        print("Epoch End",epoch)
 
 
 import seaborn as sns
