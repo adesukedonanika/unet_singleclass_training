@@ -1,5 +1,6 @@
 .ipynb_checkpoints/*
 smp_study/*
+temp/*
 *.pth
 .vscode/*
 __pycache__/*

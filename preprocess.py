@@ -10,8 +10,6 @@ from pprint import pprint
 
 # import albumentations as A
 
-
-
 # Image.open
 #  numpy.asarray numpy.ndarrayに変換する。形は(h, w, c)。
 

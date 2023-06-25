@@ -21,7 +21,7 @@ import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2 as ToTensor
 from tqdm import tqdm as tqdm
 import cv2
-
+from fpathutils import copyLocaliImages, trainPairCheck
 import random
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -44,6 +44,8 @@ imageSize = re.search(".*_Size(\d+)_lap.*",datasetDirName).group(1)
 
 from u_net_pytorch import get_train_transform, LoadDataSet
 
+orgDir = copyLocaliImages(orgDir, copyDir=f"C:\\datas\\uav_cnn_{className}")
+trainPairCheck(orgDir=orgDir)
 
 train_dataset = LoadDataSet(orgDir, resizeValue, transform=get_train_transform(resizeValue))
 print("datasets count\t",train_dataset.__len__())
@@ -167,57 +169,70 @@ for epoch in range(num_epochs):
         total_train_score.append(np.mean(train_score))
         total_valid_loss.append(np.mean(valid_loss))
         total_valid_score.append(np.mean(valid_score))
-        print(f"Train Loss: {total_train_loss[-1]}, Train IOU: {total_train_score[-1]}",f"Valid Loss: {total_valid_loss[-1]}, Valid IOU: {total_valid_score[-1]}")
+    print(f"Train Loss: {total_train_loss[-1]}, Train IOU: {total_train_score[-1]}",f"Valid Loss: {total_valid_loss[-1]}, Valid IOU: {total_valid_score[-1]}")
 
 
-        checkpoint = {
-          'epoch': epoch + 1,
-          'valid_loss_min': total_valid_loss[-1],
-          'state_dict': model.state_dict(),
-          'optimizer': optimizer.state_dict(),
+    checkpoint = {
+        'epoch': epoch + 1,
+        'valid_loss_min': total_valid_loss[-1],
+        'state_dict': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+    }
+    
+    # checkpointの保存
+    save_ckp(checkpoint, False, checkpoint_path, best_model_path)
+    
+    # 評価データにおいて最高精度のモデルのcheckpointの保存
+    if total_valid_loss[-1] <= valid_loss_min:
+        print('Validation loss decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(valid_loss_min,total_valid_loss[-1]))
+        save_ckp(checkpoint, True, checkpoint_path, best_model_path)
+        valid_loss_min = total_valid_loss[-1]
+        print(checkpoint_path)
+
+    
+    if epoch%10==0:
+
+        csvPath = os.path.join(workDir,f"scoreSheet_{modelID}_unet.csv")
+        score = {
+        # "epoch" : range(1,num_epochs+1),
+        "train_Loss" : total_train_loss,
+        "valid__Loss" : total_valid_loss,
+        "train_scoreIoU" : total_train_score,
+        "valid__scoreIoU" : total_valid_score,
         }
-      
-      # checkpointの保存
-        save_ckp(checkpoint, False, checkpoint_path, best_model_path)
-      
-        # 評価データにおいて最高精度のモデルのcheckpointの保存
-        if total_valid_loss[-1] <= valid_loss_min:
-          print('Validation loss decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(valid_loss_min,total_valid_loss[-1]))
-          save_ckp(checkpoint, True, checkpoint_path, best_model_path)
-          valid_loss_min = total_valid_loss[-1]
-          print(checkpoint_path)
 
-      
-        if epoch%10==0:
+        df_score = pd.DataFrame(score, index=range(1,len(total_train_score)+1))
+        df_score.to_csv(csvPath)
+        print("saved Score\n",csvPath)
 
-            csvPath = os.path.join(workDir,f"scoreSheet_{modelID}_unet.csv")
-            score = {
-            # "epoch" : range(1,num_epochs+1),
-            "train_Loss" : total_train_loss,
-            "valid__Loss" : total_valid_loss,
-            "train_scoreIoU" : total_train_score,
-            "valid__scoreIoU" : total_valid_score,
-            }
+    # EarlyStoppingの評価
+    early_stopping(np.mean(valid_loss))
 
-            print(len(total_train_loss))
-            print(len(total_valid_loss))
-            print(len(total_train_score))
-            print(len(total_valid_score))
+    # EarlyStoppingが有効化された場合は学習を停止
+    if early_stopping.early_stop:
+        print("Epoch EarlyStop",epoch)
+        
 
-            df_score = pd.DataFrame(score, index=range(1,len(total_train_score)+1))
-            df_score.to_csv(csvPath)
-            print("saved Score\n",csvPath)
+        
+        break
 
-        # EarlyStoppingの評価
-        early_stopping(np.mean(valid_loss))
+    print("Epoch End",epoch)
 
-        # EarlyStoppingが有効化された場合は学習を停止
-        if early_stopping.early_stop:
-            print("Epoch EarlyStop",epoch)
-            break
 
-        print("Epoch End",epoch)
 
+csvPath = os.path.join(workDir,f"scoreSheet_{modelID}_unet.csv")
+score = {
+# "epoch" : range(1,num_epochs+1),
+"train_Loss" : total_train_loss,
+"valid__Loss" : total_valid_loss,
+"train_scoreIoU" : total_train_score,
+"valid__scoreIoU" : total_valid_score,
+}
+
+
+df_score = pd.DataFrame(score, index=range(1,len(total_train_score)+1))
+df_score.to_csv(csvPath)
+print("saved Score\n",csvPath)
 
 import seaborn as sns
 

@@ -32,7 +32,23 @@ def copyLocaliImages(orgDir, copyDir):
             shutil.copy(mskPath,new_mskPath)
     return os.path.join(copyDir,orgDirName)
 
+from tqdm import tqdm
 
+# 対策         
+# FileNotFoundError: No such file
+def trainPairCheck(orgDir:str):
+    print("Train Pair Check")
+    orgNames = os.listdir(orgDir)
+    for orgName in tqdm(orgNames):
+        orgPath = os.path.join(orgDir,orgName)
+        mskPath = get_mskPath(orgPath)
+        if not os.path.exists(mskPath):
+            shutil.rmtree(orgPath)
+            print("Removed\t",orgPath)
+        elif not os.path.exists(orgPath):
+            shutil.rmtree(mskPath)
+            print("Removed\t",mskPath)
+   
 
 
 def addSavePath(Path,addKeyword):
