@@ -84,7 +84,13 @@ def getCrop4CornerPositions(imgPath:str, cropSize:int):
     lowerRightRect =(x_start, x_end, y_start, y_end)
     print("lowerRightRect",lowerRightRect)
     
-    return upperLeftRect, upperRightRect, lowerLeftRect, lowerRightRect
+    crop4corners_dict = {}
+    crop4corners_dict["01upperL"]=upperLeftRect
+    crop4corners_dict["02upperR"]=upperRightRect
+    crop4corners_dict["03lowerL"]=lowerLeftRect
+    crop4corners_dict["04lowerR"]=lowerRightRect
+
+    return crop4corners_dict
 
 def crop4CornersOrgImageBysize(imgPath:str, cropSize:int):
     img = Image.open(imgPath)
@@ -128,7 +134,6 @@ def getCropAndLapPositions(imgPath:str,cropSize:int,lapSize:int):
     # imgNp_true_resized.shape = (h, w, ch)
 
     CropAndLapPositions = []
-
 
     print("Create Tiles ImageSize:{0}, LapSize:{1}".format(cropSize, lapSize))
     for y in range(step_y_row):

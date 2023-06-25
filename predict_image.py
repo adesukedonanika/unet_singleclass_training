@@ -83,11 +83,12 @@ if os.path.exists(fontFpath):
 from segment_model_training import get_mskPath, format_image
 from preprocess import norm
 
-def predictImage(model,resizeValue,imgPaths, lowThreshold:int,saveDir:str, pickMaskPath=False):
+def predictImage(model,resizeValue,imgPaths, lowThreshold:int,saveDir:str, pickMaskPath=False, imgShow=False):
     failedImgPaths = []
+    predictedImages = {}
     pred_dataset = LoadPredDataSet(imgPaths, resizeValue, transform=get_train_transform(resizeValue))
 
-    image,image_path = pred_dataset.__getitem__(1)
+    image,image_path = pred_dataset.__getitem__(0)
 
     # GPUを使用する場合
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -119,56 +120,63 @@ def predictImage(model,resizeValue,imgPaths, lowThreshold:int,saveDir:str, pickM
         img = norm(img)
         
         pred = predict
+        predictedImages[image_path] = np.squeeze(pred)#(imgsize,imgsize,1)->(imgsize,imgsize)
         if pickMaskPath==True:
             # print(image_path)
             mskPath = get_mskPath(image_path)
             # print(mskPath)
             msk = np.array(Image.open(mskPath).resize([resizeValue,resizeValue]).convert("L"))
-            # msk_iou = msk.copy()
-            # msk_iou[msk_iou!=0]=1.0
+            msk_iou = msk.copy()
+            msk_iou[msk_iou!=0]=1.0
 
-            # # print(np.unique(msk_iou),np.unique(pred))
-            # iouVal = calculate_iou(torch.from_numpy(np.squeeze(pred)),torch.from_numpy(msk_iou)).item()
-            # # print(int(iouVal))
-            # if int(iouVal*100)<=lowThreshold:
-            #     failedImgPaths.append(image_path)
-            #     # continue
+            # print(np.unique(msk_iou),np.unique(pred))
+            iouVal = calculate_iou(torch.from_numpy(np.squeeze(pred)),torch.from_numpy(msk_iou)).item()
+            # print(int(iouVal))
+            if int(iouVal*100)<=lowThreshold:
+                failedImgPaths.append(image_path)
+                # continue
             print(image_path)
-            figure, ax = plt.subplots(1,3)
-            # print(images)
-            ax[0].imshow(img)
-            ax[1].imshow(pred, interpolation="nearest", cmap="gray")
-            ax[2].imshow(msk, interpolation="nearest", cmap="gray")
-            # try:
-            #     ax[0].set_title("元画像", fontproperties=fp)
-            #     ax[1].set_title("AI予測", fontproperties=fp)
-            #     ax[2].set_title("正解画像", fontproperties=fp)
-            #     ax[1].set_xlabel(f"正解率:{str(round(iouVal*100,2))}", fontproperties=fp)  # x軸のラベルを設定
-            # except:
-            ax[0].set_title("Original")
-            ax[1].set_title("Predict")
-            ax[2].set_title("Mask")
-            # ax[1].set_xlabel(f"IoU:{str(round(iouVal*100,2))}")  # x軸のラベルを設定
-            ax[1].set_yticks([])  # y軸の目盛りを非表示にする
-            ax[1].set_xticks([])  # x軸の目盛りを非表示にする
-            ax[0].set_axis_off()
-            # ax[1].set_axis_off()
-            ax[2].set_axis_off()
+
+            if imgShow:
+                figure, ax = plt.subplots(1,3)
+                # print(images)
+                ax[0].imshow(img)
+                ax[1].imshow(pred, interpolation="nearest", cmap="gray")
+                ax[2].imshow(msk, interpolation="nearest", cmap="gray")
+                # try:
+                #     ax[0].set_title("元画像", fontproperties=fp)
+                #     ax[1].set_title("AI予測", fontproperties=fp)
+                #     ax[2].set_title("正解画像", fontproperties=fp)
+                #     ax[1].set_xlabel(f"正解率:{str(round(iouVal*100,2))}", fontproperties=fp)  # x軸のラベルを設定
+                # except:
+                ax[0].set_title("Original")
+                ax[1].set_title("Predict")
+                ax[2].set_title("Mask")
+                # ax[1].set_xlabel(f"IoU:{str(round(iouVal*100,2))}")  # x軸のラベルを設定
+                ax[1].set_yticks([])  # y軸の目盛りを非表示にする
+                ax[1].set_xticks([])  # x軸の目盛りを非表示にする
+                ax[0].set_axis_off()
+                # ax[1].set_axis_off()
+                ax[2].set_axis_off()
+                plt.savefig(os.path.join(saveDir,"pred_" + os.path.basename(image_path)))
+                plt.show()
+                plt.close()
 
         else:
-            figure, ax = plt.subplots(1,2)
-            # print(images)
-            ax[0].imshow(img)
-            ax[1].imshow(pred, interpolation="nearest", cmap="gray")
-            ax[0].set_title("Oeiginal Image")
-            ax[1].set_title("Predict Mask")
-            ax[0].set_axis_off()
-            ax[1].set_axis_off()
-        # plt.tight_layout()
-        plt.savefig(os.path.join(saveDir,"pred_" + os.path.basename(image_path)))
-        plt.show()
-        plt.close()
+            if imgShow:
+                figure, ax = plt.subplots(1,2)
+                # print(images)
+                ax[0].imshow(img)
+                ax[1].imshow(pred, interpolation="nearest", cmap="gray")
+                ax[0].set_title("Oeiginal Image")
+                ax[1].set_title("Predict Mask")
+                ax[0].set_axis_off()
+                ax[1].set_axis_off()
+                # plt.tight_layout()
+                plt.savefig(os.path.join(saveDir,"pred_" + os.path.basename(image_path)))
+                plt.show()
+                plt.close()
 
         # print(f"正解率:{str(round(iouVal*100,2))}%")
-    return failedImgPaths
+    return failedImgPaths,predictedImages
 
