@@ -74,9 +74,9 @@ def mask2single(mask,values:list):
 
 #Datasetクラスの定義
 class LoadDataSet(Dataset):
-        def __init__(self,path,resizeValue, transform=None):
-            self.path = path
-            self.folders = os.listdir(path)
+        def __init__(self,imgPaths,resizeValue, transform=None):
+            self.path = imgPaths
+            self.folders = [os.path.basename(imgPath) for imgPath in imgPaths]
             self.transforms = get_train_transform(resizeValue)
             self.resizeValue = resizeValue
         
@@ -84,9 +84,9 @@ class LoadDataSet(Dataset):
             return len(self.folders)
               
         
-        def __getitem__(self,idx):
-            image_path = os.path.join(self.path, self.folders[idx])
-            mask_path = get_mskPath(os.path.join(self.path, self.folders[idx]))
+        def __getitem__(self, idx):
+            image_path = self.path[idx]
+            mask_path = get_mskPath(image_path)
             resizeValue = self.resizeValue
             # image_path = os.path.join(image_folder,os.listdir(image_folder)[idx])
             
@@ -135,27 +135,15 @@ class LoadPredDataSet(Dataset):
         
         def __getitem__(self, idx):
             image_path = self.path[idx]
-            # mask_path = get_mskPath(self.path[idx])
             resizeValue = self.resizeValue
             
             #画像データの取得
             img = io.imread(image_path)[:,:,0:3].astype('float32')
             img = transform.resize(img,(resizeValue,resizeValue))
             
-            # mask = self.get_mask(mask_path, resizeValue, resizeValue ).astype('float32')
-
 
             augmented = self.transforms(image=img)
-            # augmented = self.transforms(image=img, mask=mask)
             img = augmented['image']
-            # mask = augmented['mask']
-            # mask = mask.permute(2, 0, 1)
-
-
-            # # 可視化
-            # figure, ax = plt.subplots(nrows=2, ncols=2, figsize=(5, 8))
-            # ax[0,0].imshow(img.permute(1, 2, 0))#img画像は正規化しているため色味がおかしい
-            # ax[0,1].imshow(mask[0,:,:])
 
             return img, image_path
 
@@ -540,7 +528,24 @@ def visualize_training_predict(org_batchs, msk_batchs, pred_batchs, workDir:str,
     # plt.clf()
     # plt.close()
     
-    
+
+def saveScoreCSV(workDir:str, modelID:str,total_train_loss:list,total_valid_loss:list,total_train_score:list,total_valid_score:list):
+    os.makedirs(workDir,exist_ok=True)
+    csvPath = os.path.join(workDir,f"scoreSheet_{modelID}_unet.csv")
+    score = {
+    # "epoch" : range(1,num_epochs+1),
+    "train_Loss" : total_train_loss,
+    "valid__Loss" : total_valid_loss,
+    "train_scoreIoU" : total_train_score,
+    "valid__scoreIoU" : total_valid_score,
+    }
+
+
+    df_score = pd.DataFrame(score, index=range(1,len(total_train_score)+1))
+    df_score.to_csv(csvPath)
+    print("saved Score\n",csvPath)
+
+
 # EarlyStoppingクラスの定義
 class EarlyStopping:
     def __init__(self, patience=5, delta=0.0):

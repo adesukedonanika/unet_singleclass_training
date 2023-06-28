@@ -37,6 +37,7 @@ datasetDirName = sys.argv[5]
 # orgDir = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512_rotate_flipMirror"
 # orgDir = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512"
 orgDir = f"03_datasetforModel\\Forest tsumura 2 50m P4Pv2_{className}\\{datasetDirName}"
+orgDir = sys.argv[5]
 
 imageSize = re.search(".*_Size(\d+)_lap.*",datasetDirName).group(1)
 
@@ -87,7 +88,7 @@ print("Length of ALL　data:\t\t{}".format(train_dataset.__len__()))
 import u_net_pytorch
 import importlib
 importlib.reload(u_net_pytorch)
-from u_net_pytorch import UNet, IoU, DiceBCELoss, DiceLoss, save_ckp, load_ckp, format_image, format_mask, EarlyStopping
+from u_net_pytorch import UNet, IoU, DiceBCELoss, DiceLoss, save_ckp, load_ckp, format_image, format_mask, saveScoreCSV, EarlyStopping
 
 
 
@@ -161,8 +162,10 @@ for epoch in range(num_epochs):
                 valid_score.append(score.item())
 
     
-            if epoch%10==0:
+            if epoch!=0 and epoch%10==0:
                 visualize_training_predict(image,mask,output,workDir,True,True)
+                saveScoreCSV(workDir,modelID,total_train_loss,total_valid_loss, total_train_score, total_valid_score)
+                save_ckp(checkpoint, False, checkpoint_path, best_model_path)
 
             
         total_train_loss.append(np.mean(train_loss))
@@ -179,60 +182,31 @@ for epoch in range(num_epochs):
         'optimizer': optimizer.state_dict(),
     }
     
-    # checkpointの保存
-    save_ckp(checkpoint, False, checkpoint_path, best_model_path)
+    if epoch>=20:
+        # checkpointの保存
+        save_ckp(checkpoint, False, checkpoint_path, best_model_path)
     
     # 評価データにおいて最高精度のモデルのcheckpointの保存
     if total_valid_loss[-1] <= valid_loss_min:
         print('Validation loss decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(valid_loss_min,total_valid_loss[-1]))
         save_ckp(checkpoint, True, checkpoint_path, best_model_path)
         valid_loss_min = total_valid_loss[-1]
-        print(checkpoint_path)
+        print("bestModel",checkpoint_path)
 
     
-    if epoch%10==0:
-
-        csvPath = os.path.join(workDir,f"scoreSheet_{modelID}_unet.csv")
-        score = {
-        # "epoch" : range(1,num_epochs+1),
-        "train_Loss" : total_train_loss,
-        "valid__Loss" : total_valid_loss,
-        "train_scoreIoU" : total_train_score,
-        "valid__scoreIoU" : total_valid_score,
-        }
-
-        df_score = pd.DataFrame(score, index=range(1,len(total_train_score)+1))
-        df_score.to_csv(csvPath)
-        print("saved Score\n",csvPath)
 
     # EarlyStoppingの評価
     early_stopping(np.mean(valid_loss))
 
     # EarlyStoppingが有効化された場合は学習を停止
     if early_stopping.early_stop:
-        print("Epoch EarlyStop",epoch)
-        
-
-        
+        print("Epoch EarlyStop",epoch)       
         break
 
-    print("Epoch End",epoch)
+    print("Epoch End",epoch+1)
 
 
-
-csvPath = os.path.join(workDir,f"scoreSheet_{modelID}_unet.csv")
-score = {
-# "epoch" : range(1,num_epochs+1),
-"train_Loss" : total_train_loss,
-"valid__Loss" : total_valid_loss,
-"train_scoreIoU" : total_train_score,
-"valid__scoreIoU" : total_valid_score,
-}
-
-
-df_score = pd.DataFrame(score, index=range(1,len(total_train_score)+1))
-df_score.to_csv(csvPath)
-print("saved Score\n",csvPath)
+saveScoreCSV(workDir,modelID,total_train_loss,total_valid_loss, total_train_score, total_valid_score)
 
 import seaborn as sns
 

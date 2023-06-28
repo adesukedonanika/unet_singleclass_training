@@ -92,7 +92,7 @@ def predictImage(model,resizeValue,imgPaths, lowThreshold:int,saveDir:str, pickM
 
     # GPUを使用する場合
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print("torchDevice",device)
+    # print("torchDevice",device)
     # model = model.to(device)
 
     pred_loader = DataLoader(dataset=pred_dataset, batch_size=1, shuffle=False)
