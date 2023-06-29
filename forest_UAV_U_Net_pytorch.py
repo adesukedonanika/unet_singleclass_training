@@ -21,8 +21,11 @@ import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2 as ToTensor
 from tqdm import tqdm as tqdm
 import cv2
-from fpathutils import copyLocaliImages, trainPairCheck
 import random
+from fpathutils import copyLocaliImages, trainPairCheck
+from u_net_pytorch import UNet, IoU, DiceBCELoss, DiceLoss, save_ckp, load_ckp, format_image, format_mask, saveScoreCSV, EarlyStopping, get_train_transform, LoadDataSet
+from u_net_pytorch import visualize_training_predict
+import seaborn as sns
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print(torch.cuda.is_available(),device)
@@ -36,19 +39,17 @@ datasetDirName = sys.argv[5]
 
 # orgDir = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512_rotate_flipMirror"
 # orgDir = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512"
-orgDir = f"03_datasetforModel\\Forest tsumura 2 50m P4Pv2_{className}\\{datasetDirName}"
+orgDir = f"uav_cnn_{className}\\{datasetDirName}"
 # orgDir = sys.argv[5]
 
 imageSize = re.search(".*_Size(\d+)_lap.*",datasetDirName).group(1)
 
 # os.makedirs(orgDir,exist_ok=True)
 
-from u_net_pytorch import get_train_transform, LoadDataSet
 
-orgDir = copyLocaliImages(orgDir, copyDir=f"\\\\matsui11notepc\\datas\\uav_cnn_{className}")
 trainPairCheck(orgDir=orgDir)
 
-orgDir = copyLocaliImages(orgDir, copyDir=f"\\\\matsui11notepc\\datas\\uav_cnn_{className}")
+# orgDir = copyLocaliImages(orgDir, copyDir=f"\\\\matsui_gpu_nsi\\datas\\uav_cnn_{className}")
 imgPaths = glob.glob(os.path.join(orgDir,"*.jpg"))
 if len(imgPaths)>=5000:
     imgPaths = random.sample(imgPaths,5000)
@@ -84,10 +85,6 @@ print("Length of validation　data:\t{}".format(len(valid_data)))
 print("Length of ALL　data:\t\t{}".format(train_dataset.__len__()))
 
 
-import u_net_pytorch
-import importlib
-importlib.reload(u_net_pytorch)
-from u_net_pytorch import UNet, IoU, DiceBCELoss, DiceLoss, save_ckp, load_ckp, format_image, format_mask, saveScoreCSV, EarlyStopping
 
 
 
@@ -120,8 +117,6 @@ early_stopping = EarlyStopping(patience=10, delta=0.2)
 カウンタがインクリメントされます。我慢エポック数(patience)に達した時点で学習が停止します。
 '''
 
-importlib.reload(u_net_pytorch)
-from u_net_pytorch import visualize_training_predict
 
 losses_value = 0
 for epoch in range(num_epochs):
@@ -207,7 +202,7 @@ for epoch in range(num_epochs):
 
 saveScoreCSV(workDir,modelID,total_train_loss,total_valid_loss, total_train_score, total_valid_score)
 
-import seaborn as sns
+
 
 plt.figure(1)
 plt.figure(figsize=(15,5))

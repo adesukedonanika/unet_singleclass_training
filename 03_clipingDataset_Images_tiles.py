@@ -9,12 +9,10 @@
 import os,glob,shutil,json,sys
 from tqdm import tqdm
 from orgImageCrop import crop4CornersOrgImageBysize, cropImgBylapsize
-
+from fpathutils import get_mskPath
 
 def main():
     # input
-    orgDir = "01_LabelboxExport/Forest tsumura 2 50m P4Pv2/original"
-    mskDir = "02_MargedMaskImages/Forest tsumura 2 50m P4Pv2/msk"
 
     # Opening JSON file
     with open('treeTypeValues.json', 'r') as openfile:
@@ -22,30 +20,32 @@ def main():
         # Reading from json file
         treeTypeValues = json.load(openfile)
         
-    treeTypeValues
     treeTypes = list(treeTypeValues.keys())
 
 
-    orgPaths = glob.glob(orgDir + "/*.JPG")
 
     for treeType in treeTypes:
-        mskPaths = glob.glob(mskDir + f"*{treeType}/*.PNG")
+        orgDir = f"C:/datas/uav_cnn_{treeType}/org"
+        mskDir = f"C:/datas/uav_cnn_{treeType}/msk"
+
+        orgPaths = glob.glob(orgDir + "/*.JPG")
+        mskPaths = glob.glob(mskDir+"/*.PNG")
 
 
         # Output
-        cropArgmentDir = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{treeType}"
+        cropArgmentDir = orgDir#f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{treeType}"
         os.makedirs(cropArgmentDir,exist_ok=True)
 
         try:
             shutil.copytree(os.path.dirname(orgPaths[0]),os.path.join(cropArgmentDir,"org"))
-            shutil.copytree(os.path.dirname(mskPaths[0]),os.path.join(cropArgmentDir,"msk"))
+            shutil.copytree(os.path.dirname(mskPaths[0]),get_mskPath(cropArgmentDir))
         except:
             print("already copy")
             
         orgPaths = glob.glob(os.path.join(cropArgmentDir,"org") + "/*.JPG")
-        mskPaths = glob.glob(os.path.join(cropArgmentDir,"msk") + "/*.PNG")
+        mskPaths = glob.glob(get_mskPath(cropArgmentDir) + "/*.PNG")
 
-        # print(len(orgPaths))
+        print(len(orgPaths))
         # print(len(orgPaths)==len(mskPaths))
         # print(orgPaths[0],mskPaths[0])
 
@@ -65,24 +65,24 @@ def main():
                 mskPaths.remove(path)
 
 
-
-
-        orgPaths = glob.glob(os.path.join(cropArgmentDir,"org") + "/*.JPG")
-        mskPaths = glob.glob(os.path.join(cropArgmentDir,"msk") + "/*.PNG")
+        orgPaths = glob.glob(cropArgmentDir + "/*.JPG")
+        mskPaths = glob.glob(get_mskPath(cropArgmentDir) + "/*.PNG")
 
         for orgPath in tqdm(orgPaths):
-            orgDir = crop4CornersOrgImageBysize(orgPath,cropSize)
-            mskPath = orgPath.replace("org","msk").replace(".JPG",".PNG")
-            mskDir = crop4CornersOrgImageBysize(mskPath,cropSize)
-        orgPaths = glob.glob(orgDir + "/*_*Rect.JPG")
-        mskPaths = glob.glob(mskDir + "/*_*Rect.PNG")
+            orgDir = crop4CornersOrgImageBysize(orgPath, cropSize)
+            mskPath = get_mskPath(orgPath)
+            mskDir = crop4CornersOrgImageBysize(mskPath, cropSize)
+
+
+        orgPaths = glob.glob(orgDir + "/*_*rect.JPG")
+        mskPaths = glob.glob(mskDir + "/*_*rect.PNG")
 
         print(len(orgPaths),len(mskPaths))
 
 
         for orgPath in tqdm(orgPaths):
             cropImgBylapsize(orgPath,cropSize,lapSize)
-            mskPath = orgPath.replace("org","msk").replace(".JPG",".PNG")
+            mskPath = get_mskPath(orgPath)
             cropImgBylapsize(mskPath,cropSize,lapSize)
 
 

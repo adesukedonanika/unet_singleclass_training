@@ -104,7 +104,12 @@ def crop4CornersOrgImageBysize(imgPath:str, cropSize:int):
     saveImgDIr = os.path.dirname(imgPath) + f"_crop4Corner_{resizeSetSlide[1]}_{resizeSetSlide[0]}\\"
     os.makedirs(saveImgDIr, exist_ok=True)
 
-    upperLeftRect, upperRightRect, lowerLeftRect, lowerRightRect = getCrop4CornerPositions(imgPath, cropSize)
+    crop4corners_dict = getCrop4CornerPositions(imgPath, cropSize)
+    upperLeftRect = crop4corners_dict["01upperL"]
+    upperRightRect = crop4corners_dict["02upperR"]
+    lowerLeftRect = crop4corners_dict["03lowerL"]
+    lowerRightRect = crop4corners_dict["04lowerR"]
+
 
     
     imgSavePath = saveImgDIr + os.path.basename(addStrBeforeExt(imgPath,"01upperL_rect"))

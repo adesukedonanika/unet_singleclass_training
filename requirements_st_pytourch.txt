@@ -13,3 +13,4 @@ folium
 geojson
 streamlit
 skimage
+rasterio
