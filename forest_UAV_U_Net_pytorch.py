@@ -37,7 +37,7 @@ datasetDirName = sys.argv[5]
 # orgDir = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512_rotate_flipMirror"
 # orgDir = f"03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org_crop4Corner_5120_3072_Size1024_lap512"
 orgDir = f"03_datasetforModel\\Forest tsumura 2 50m P4Pv2_{className}\\{datasetDirName}"
-orgDir = sys.argv[5]
+# orgDir = sys.argv[5]
 
 imageSize = re.search(".*_Size(\d+)_lap.*",datasetDirName).group(1)
 
@@ -45,19 +45,18 @@ imageSize = re.search(".*_Size(\d+)_lap.*",datasetDirName).group(1)
 
 from u_net_pytorch import get_train_transform, LoadDataSet
 
-orgDir = copyLocaliImages(orgDir, copyDir=f"C:\\datas\\uav_cnn_{className}")
+orgDir = copyLocaliImages(orgDir, copyDir=f"\\\\matsui11notepc\\datas\\uav_cnn_{className}")
 trainPairCheck(orgDir=orgDir)
 
-train_dataset = LoadDataSet(orgDir, resizeValue, transform=get_train_transform(resizeValue))
+orgDir = copyLocaliImages(orgDir, copyDir=f"\\\\matsui11notepc\\datas\\uav_cnn_{className}")
+imgPaths = glob.glob(os.path.join(orgDir,"*.jpg"))
+if len(imgPaths)>=5000:
+    imgPaths = random.sample(imgPaths,5000)
+
+train_dataset = LoadDataSet(imgPaths, resizeValue, transform=get_train_transform(resizeValue))
 print("datasets count\t",train_dataset.__len__())
 
-image, mask = train_dataset.__getitem__(3)
-print(image.shape)
-print(mask.shape)
 
-
-
-from genericpath import exists
 split_valid_ratio = 0.2
 train_size=int(np.round(train_dataset.__len__()*(1 - split_valid_ratio),0))
 valid_size=int(np.round(train_dataset.__len__()*split_valid_ratio,0))

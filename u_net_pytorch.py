@@ -49,20 +49,32 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # ②データの前処理  
 #画像データ拡張の関数
-def get_train_transform(resizeValue):
-   return A.Compose(
-       [
-        #リサイズ(こちらはすでに適用済みなのでなくても良いです)
-        A.Resize(resizeValue, resizeValue),
-        #正規化(こちらの細かい値はalbumentations.augmentations.transforms.Normalizeのデフォルトの値を適用)
-        # A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-        A.Normalize(),
-        #水平フリップ（pはフリップする確率）
-        # A.HorizontalFlip(p=0.25),
-        #垂直フリップ
-        # A.VerticalFlip(p=0.25),
-        ToTensor()
-        ])
+def get_train_transform(resizeValue,normalize=True):
+    if normalize==True:
+        return A.Compose(
+        [
+            #リサイズ(こちらはすでに適用済みなのでなくても良いです)
+            A.Resize(resizeValue, resizeValue),
+            #正規化(こちらの細かい値はalbumentations.augmentations.transforms.Normalizeのデフォルトの値を適用)
+            # A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            A.Normalize(),
+            #水平フリップ（pはフリップする確率）
+            # A.HorizontalFlip(p=0.25),
+            #垂直フリップ
+            # A.VerticalFlip(p=0.25),
+            ToTensor()
+            ])
+    else:
+        return A.Compose(
+        [
+            #リサイズ(こちらはすでに適用済みなのでなくても良いです)
+            A.Resize(resizeValue, resizeValue),
+            #水平フリップ（pはフリップする確率）
+            # A.HorizontalFlip(p=0.25),
+            #垂直フリップ
+            # A.VerticalFlip(p=0.25),
+            ToTensor()
+            ])
 
 def mask2single(mask,values:list):
     for value in values:
@@ -83,7 +95,6 @@ class LoadDataSet(Dataset):
         def __len__(self):
             return len(self.folders)
               
-        
         def __getitem__(self, idx):
             image_path = self.path[idx]
             mask_path = get_mskPath(image_path)
@@ -92,7 +103,7 @@ class LoadDataSet(Dataset):
             
             #画像データの取得
             img = io.imread(image_path)[:,:,0:3].astype('float32')
-            img = transform.resize(img,(resizeValue,resizeValue))
+            # img = transform.resize(img,(resizeValue,resizeValue))
             
             mask = self.get_mask(mask_path, resizeValue, resizeValue ).astype('float32')
 
