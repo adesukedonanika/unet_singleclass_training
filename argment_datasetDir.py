@@ -1,8 +1,54 @@
-from segment_model_training import rotateSave, flipMirrorSave
 import os, glob
 from tqdm import tqdm
-
+from PIL import Image,ImageOps
 from fpathutils import get_mskPath
+
+from fpathutils import addSavePath, get_mskPath
+
+def flipMirrorSave(imgPath, SaveDir):
+    os.makedirs(SaveDir,exist_ok=True)
+
+    imgPil = Image.open(imgPath)
+    imgPil_flip = ImageOps.flip(imgPil)
+    imgPil_mirror = ImageOps.mirror(imgPil)
+
+    SavePath = os.path.join(SaveDir, os.path.basename(imgPath))
+
+    SavePath_flip = addSavePath(SavePath,"_flip")
+    SavePath_mirror = addSavePath(SavePath,"_mirror")
+
+    os.makedirs(os.path.dirname(SavePath_flip), exist_ok=True)
+    os.makedirs(os.path.dirname(SavePath_mirror), exist_ok=True)
+
+    if not os.path.exists(SavePath):
+        imgPil.save(SavePath)
+    if not os.path.exists(SavePath_flip):
+        imgPil_flip.save(SavePath_flip)
+    if not os.path.exists(SavePath_mirror):
+        imgPil_mirror.save(SavePath_mirror)
+#     return imgPil_filp, imgPil_mirror
+
+def rotateSave(imgPath, SaveDir, angleMax:int, angleInterval:90):
+    os.makedirs(SaveDir,exist_ok=True)
+
+    imgPil = Image.open(imgPath)
+    #　画像を回転角度の設定値　90, 180, 270
+    angleMax = angleMax + 90
+    # angleInterval = 90
+
+    SavePath = os.path.join(SaveDir, os.path.basename(imgPath))
+
+    for angle in range(0,angleMax,angleInterval):
+        angleStr = str(angle).zfill(3)
+        
+        #画像の保存名を定義。
+        SavePath_rotate = addSavePath(SavePath, f"rotate{angleStr}")
+        os.makedirs(os.path.dirname(SavePath_rotate), exist_ok=True)
+        if not os.path.exists(SavePath_rotate):
+            imgPil_rotate = imgPil.rotate(angle)
+            imgPil_rotate.save(SavePath_rotate)
+            print(SavePath_rotate,imgPil_rotate.mode)
+
 
 def argmentDataset(orgDir, rotate=True, flipMirror=True):
     #Rotate処理
@@ -33,6 +79,8 @@ def argmentDataset(orgDir, rotate=True, flipMirror=True):
     return orgDir
 
 
-orgDir = ".\\03_datasetforModel\\Forest tsumura 2 50m P4Pv2_cedar\\org_crop4Corner_5120_3584_Size0512_lap0256"
+orgDir = "C:\\datas\\uav_cnn_cedar\\org_crop4Corner_5120_3584_Size0512_lap0256"
+argmentDataset(orgDir=orgDir,rotate=True,flipMirror=True)
 
+orgDir = "C:\\datas\\uav_cnn_cedar\\org_crop4Corner_5376_3584_Size0256_lap0000"
 argmentDataset(orgDir=orgDir,rotate=True,flipMirror=True)

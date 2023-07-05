@@ -96,8 +96,9 @@ def main():
 # スクリプトが直接実行された場合にのみmain()関数を呼び出す
 if __name__ == "__main__":
     main()
-
-
-
-
-
+    from argment_datasetDir import argmentDataset
+    
+    orgDirs = glob.glob("C:\\datas\\uav_cnn_*\\org_crop4Corner_*_Size*_lap*")
+    for orgDir in orgDirs:
+        
+        argmentDataset(orgDir=orgDir,rotate=True,flipMirror=True)
