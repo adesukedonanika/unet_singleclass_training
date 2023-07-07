@@ -1,5 +1,5 @@
 
-import os, glob, re, datetime
+import os, glob, re, datetime, shutil
 from tqdm import tqdm
 import torch
 from skimage import io, transform
@@ -244,7 +244,7 @@ def getCropLapSize(imageDir):
     return cropSize,lapSize
 
 import orgImageCrop
-
+import time 
 
 # #画像ファイルパスからcropSize, lapSizeを取得
 # datasetDirName = os.path.basename(os.path.dirname(imgPaths[0]))
@@ -276,6 +276,9 @@ def predictUAVImageCropLap(UAVimgPath,saveDir,model,resizeSize,cropSize, lapSize
     for y in range(y_step):
         for x in range(x_step):
             cropPositions.append([x, y])
+
+    uavDir = os.path.join(saveDir,UAVImageName)
+    os.makedirs(uavDir,exist_ok=True)
 
     for x,y in tqdm(cropPositions):
         # print("\n","x, y =", x, y )
@@ -324,7 +327,7 @@ def predictUAVImageCropLap(UAVimgPath,saveDir,model,resizeSize,cropSize, lapSize
         low80ImgPaths, predImages = predictImage(model,
                                                  resizeSize,
                                                  imgPaths=predImagePaths,
-                                                 lowThreshold=20,
+                                                 lowThreshold=0,
                                                  saveDir=saveImgDir,
                                                  pickMaskPath=False,
                                                  normalize=False,
@@ -334,6 +337,13 @@ def predictUAVImageCropLap(UAVimgPath,saveDir,model,resizeSize,cropSize, lapSize
         pred = np.array(pred)
         predCanvas[y_start : y_end, x_start : x_end] = pred
 
+        savePredPath = os.path.join(uavDir,os.path.basename(orgPath_uav).split(".")[-2] + "_" + xyStr + "." + os.path.basename(orgPath_uav).split(".")[-1].replace("JPG","jpg").replace("PNG","png"))
+        pred = Image.fromarray((pred*100).astype(np.uint8)).convert('L')
+        pred.save(savePredPath+".png")
+        # time.sleep(0.5)
+        shutil.copyfile(saveImgPath,os.path.join(uavDir, os.path.basename(saveImgPath)))
+        
+        # time.sleep(0.5)
         # twoImgShow(Image.fromarray(pred),Image.fromarray(imgNp))
 
         # twoImgShow(Image.fromarray(predCanvas),org_UAV_pil)

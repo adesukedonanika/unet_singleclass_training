@@ -59,7 +59,7 @@ trainPairCheck(orgDir=orgDir)
 # orgDir = copyLocaliImages(orgDir, copyDir=f"\\\\matsui_gpu_nsi\\datas\\uav_cnn_{className}")
 imgPaths = glob.glob(os.path.join(orgDir,"*.jpg"))
 if len(imgPaths)>=5000:
-    imgPaths = random.sample(imgPaths,100)
+    imgPaths = random.sample(imgPaths,5000)
 
 normalize = False
 
@@ -250,12 +250,15 @@ model, optimizer, start_epoch, valid_loss_min = load_ckp(best_model_path, model,
 
 # 続いて入力画像と教師データ、モデルによる出力を表示する関数を用意し、出力を行います。
 
-outImagePath = os.path.join(workDir,modelID,"OutImages")
-os.makedirs(outImagePath,exist_ok=True)
 
 predict_orgPaths = glob.glob(os.path.join(orgDir,"DJI_0065*.jpg"))
 predict_orgPaths = random.sample(predict_orgPaths, 3)
 
+
+
+
+# outImagePath = os.path.join(workDir,modelID,"OutImages")
+# os.makedirs(outImagePath,exist_ok=True)
 
 # def visualize_predict(model, n_images, imgSave=False):
 #     figure, ax = plt.subplots(nrows=n_images, ncols=3, figsize=(15, 5*n_images))
@@ -304,7 +307,7 @@ predict_orgPaths = random.sample(predict_orgPaths, 3)
 
 
 from predict_image import getUAVImageName, predictUAVImageCropLap, getCropLapSize
-
+import time
 cropSize,lapSize = getCropLapSize(datasetDirName)
 
 workDir_pred = os.path.join(workDir,"predictedUAVimgs")
@@ -313,8 +316,12 @@ os.makedirs(workDir_pred,exist_ok=True)
 UAVImageNames = [getUAVImageName(imgPath) for imgPath in imgPaths]
 UAVImageNames = list(set(UAVImageNames))
 for UAVImageName in tqdm(UAVImageNames):
-
+    
     UAVPath = os.path.join(f"H:/マイドライブ/Forest/src//03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org",UAVImageName+".JPG")
+
+    workDir_pred = os.path.join(workDir,"predictedUAVimgs_lapSize-"+str(lapSize))
+    os.makedirs(workDir_pred,exist_ok=True)
+    
     predictUAVImageCropLap(UAVimgPath=UAVPath,
                            saveDir=workDir_pred,
                            model=model,
@@ -323,3 +330,16 @@ for UAVImageName in tqdm(UAVImageNames):
                            lapSize=int(lapSize),
                            className=className)
     
+    time.sleep(2)
+    lapSize2 = 0
+    workDir_pred = os.path.join(workDir,"predictedUAVimgs_lapSize-"+str(lapSize2))
+    os.makedirs(workDir_pred,exist_ok=True)
+    
+    UAVPath = os.path.join(f"H:/マイドライブ/Forest/src//03_datasetforModel/Forest tsumura 2 50m P4Pv2_{className}/org",UAVImageName+".JPG")
+    predictUAVImageCropLap(UAVimgPath=UAVPath,
+                        saveDir=workDir_pred,
+                        model=model,
+                        resizeSize=resizeValue,
+                        cropSize=int(cropSize),
+                        lapSize=int(lapSize2),
+                        className=className)
