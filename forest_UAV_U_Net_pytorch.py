@@ -58,8 +58,8 @@ trainPairCheck(orgDir=orgDir)
 
 # orgDir = copyLocaliImages(orgDir, copyDir=f"\\\\matsui_gpu_nsi\\datas\\uav_cnn_{className}")
 imgPaths = glob.glob(os.path.join(orgDir,"*.jpg"))
-if len(imgPaths)>=5000:
-    imgPaths = random.sample(imgPaths,5000)
+# if len(imgPaths)>=5000:
+#     imgPaths = random.sample(imgPaths,5000)
 
 normalize = False
 
