@@ -4,6 +4,8 @@ temp/*
 *.pth
 .vscode/*
 __pycache__/*
+*.pptx
+__pycache__/*
 .*DJI_*
 01_LabelboxExport/*
 02_MargedMaskImages/*

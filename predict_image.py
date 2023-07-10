@@ -16,6 +16,81 @@ import random
 mean_values, std_deviation = np.array([0.485, 0.456, 0.406]), np.array([0.229, 0.224, 0.225])#A.Normalize()のデフォルト値
 
 
+# def _convert_to_wandb_image(image: Union[np.ndarray, torch.Tensor], channels_last: bool):
+#     if isinstance(image, torch.Tensor):
+#         image = image.data.cpu().numpy()
+
+#     # Error out for empty arrays or weird arrays of dimension 0.
+#     if np.any(np.equal(image.shape, 0)):
+#         raise ValueError(f'Got an image (shape {image.shape}) with at least one dimension being 0! ')
+
+#     # Squeeze any singleton dimensions and then add them back in if image dimension
+#     # less than 3.
+#     image = image.squeeze()
+
+#     # Add in length-one dimensions to get back up to 3
+#     # putting channels last.
+#     if image.ndim == 1:
+#         image = np.expand_dims(image, (1, 2))
+#         channels_last = True
+#     if image.ndim == 2:
+#         image = np.expand_dims(image, 2)
+#         channels_last = True
+
+#     if image.ndim != 3:
+#         raise ValueError(
+#             textwrap.dedent(f'''Input image must be 3 dimensions, but instead
+#                             got {image.ndim} dims at shape: {image.shape}
+#                             Your input image was interpreted as a batch of {image.ndim}
+#                             -dimensional images because you either specified a
+#                             {image.ndim + 1}D image or a list of {image.ndim}D images.
+#                             Please specify either a 4D image of a list of 3D images'''))
+
+#     if not channels_last:
+#         assert isinstance(image, np.ndarray)
+#         image = image.transpose(1, 2, 0)
+#     return image
+
+
+# def im_detect_keypoints(model, im_scale, boxes, blob_conv):
+#     """Infer instance keypoint poses. This function must be called after
+#     im_detect_bbox as it assumes that the Caffe2 workspace is already populated
+#     with the necessary blobs.
+
+#     Arguments:
+#         model (DetectionModelHelper): the detection model to use
+#         im_scale (list): image blob scales as returned by im_detect_bbox
+#         boxes (ndarray): R x 4 array of bounding box detections (e.g., as
+#             returned by im_detect_bbox)
+
+#     Returns:
+#         pred_heatmaps (ndarray): R x J x M x M array of keypoint location
+#             logits (softmax inputs) for each of the J keypoint types output
+#             by the network (must be processed by keypoint_results to convert
+#             into point predictions in the original image coordinate space)
+#     """
+#     M = cfg.KRCNN.HEATMAP_SIZE
+#     if boxes.shape[0] == 0:
+#         pred_heatmaps = np.zeros((0, cfg.KRCNN.NUM_KEYPOINTS, M, M), np.float32)
+#         return pred_heatmaps
+
+    # inputs = {'keypoint_rois': _get_rois_blob(boxes, im_scale)}
+
+    # # Add multi-level rois for FPN
+    # if cfg.FPN.MULTILEVEL_ROIS:
+    #     _add_multilevel_rois_for_test(inputs, 'keypoint_rois')
+
+    # pred_heatmaps = model.module.keypoint_net(blob_conv, inputs)
+    # pred_heatmaps = pred_heatmaps.data.cpu().numpy().squeeze()
+
+    # # In case of 1
+    # if pred_heatmaps.ndim == 3:
+    #     pred_heatmaps = np.expand_dims(pred_heatmaps, axis=0)
+
+    # return pred_heatmaps
+
+
+
 #画像データ拡張の関数
 def get_train_transform(resizeValue,normalize):
     if normalize:
@@ -96,9 +171,12 @@ from preprocess import norm
 def predictImage(model,resizeValue,imgPaths, lowThreshold:int,saveDir:str, pickMaskPath=False,normalize=False, imgShow=False):
     failedImgPaths = []
     predictedImages = {}
-    pred_dataset = LoadPredDataSet(imgPaths, resizeValue, normalize=True, transform=get_train_transform(resizeValue=resizeValue, normalize=normalize))
+    pred_dataset = LoadPredDataSet(imgPaths, resizeValue, normalize=False, transform=get_train_transform(resizeValue=resizeValue, normalize=normalize))
 
     image,image_path = pred_dataset.__getitem__(0)
+
+    if isinstance(image, torch.Tensor):
+        image = image.data.cpu().numpy()
 
     # GPUを使用する場合
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -120,6 +198,9 @@ def predictImage(model,resizeValue,imgPaths, lowThreshold:int,saveDir:str, pickM
         predict = predict.data.cpu().numpy()#(1,1,imgsize,imgsize)
         predict = np.squeeze(predict)#(imgsize,imgsize)
         predict = np.expand_dims(predict,axis=-1)#(1,imgsize,imgsize)
+        # Threshold = lowThreshold/100
+        # predict[predict>=Threshold]=1.0
+        # predict[predict<=Threshold]=0.0
 
         # print(np.unique(predict))
 
@@ -192,7 +273,7 @@ def predictImage(model,resizeValue,imgPaths, lowThreshold:int,saveDir:str, pickM
 
 def getOrgImgInfo(imgName:str):
     if not os.path.exists(imgName):
-        pattern = f"./03_datasetforModel/Forest tsumura 2 50m P4Pv2_cypress/org/{imgName}.JPG"
+        pattern = f"./03_datasetforModel/Forest_tsumura_2_50m_P4Pv2_cypress/org/{imgName}.JPG"
         # print(pattern)
         imagePaths = glob.glob(pattern)
     else:
@@ -253,7 +334,7 @@ import time
 # lapSize = 0
 
 
-def predictUAVImageCropLap(UAVimgPath,saveDir,model,resizeSize,cropSize, lapSize,className):
+def predictUAVImageCropLap(UAVimgPath,saveDir,model,resizeSize,cropSize, lapSize,normalize, className):
     org_UAV_pil = Image.open(UAVimgPath)
     width_uav, height_uav = org_UAV_pil.size
 
@@ -323,14 +404,14 @@ def predictUAVImageCropLap(UAVimgPath,saveDir,model,resizeSize,cropSize, lapSize
         if len(predImagePaths)==0:
             continue
         
-        normalize = False
+        # normalize = False
         low80ImgPaths, predImages = predictImage(model,
                                                  resizeSize,
                                                  imgPaths=predImagePaths,
-                                                 lowThreshold=0,
+                                                 lowThreshold=50,
                                                  saveDir=saveImgDir,
                                                  pickMaskPath=False,
-                                                 normalize=False,
+                                                 normalize=normalize,
                                                  imgShow=False)
         # print(predImages,predImages[predImagePaths[0]].shape)
         pred = Image.fromarray(predImages[predImagePaths[0]]).resize([cropSize,cropSize])
@@ -352,7 +433,7 @@ def predictUAVImageCropLap(UAVimgPath,saveDir,model,resizeSize,cropSize, lapSize
         # plt.close()
 
     predCanvas = predCanvas[0:height_uav,0:width_uav]
-    predCanvas[predCanvas!=0]=128
+    # predCanvas[predCanvas!=0]=128
 
     Image.fromarray(predCanvas).save(os.path.join(saveDir,UAVImageName+"_"+className+".PNG"))
 
