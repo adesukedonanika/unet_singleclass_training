@@ -119,7 +119,7 @@ class LoadDataSet(Dataset):
             # ax[0,0].imshow(img.permute(1, 2, 0))#img画像は正規化しているため色味がおかしい
             # ax[0,1].imshow(mask[0,:,:])
 
-            return (img,mask) 
+            return img,mask, image_path
 
         #マスクデータの取得
         def get_mask(self,mask_path,IMG_HEIGHT, IMG_WIDTH):

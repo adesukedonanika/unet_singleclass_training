@@ -137,7 +137,7 @@ for epoch in range(num_epochs):
     pbar = tqdm(train_loader, desc = 'description')
     
     #<---------------学習---------------------->    
-    for x_train, y_train in pbar:
+    for x_train, y_train, orgPath in pbar:
         x_train = torch.autograd.Variable(x_train).cuda()
         y_train = torch.autograd.Variable(y_train).cuda()
         optimizer.zero_grad()
@@ -155,7 +155,7 @@ for epoch in range(num_epochs):
 
     #<---------------評価----------------------> 
     with torch.no_grad():
-        for image,mask in val_loader:
+        for image,mask,orgPath in val_loader:
             image = torch.autograd.Variable(image).cuda()
             mask = torch.autograd.Variable(mask).cuda()
             output = model(image)
@@ -166,7 +166,6 @@ for epoch in range(num_epochs):
             score = accuracy_metric(output,mask)
             valid_loss.append(losses_value)
             valid_score.append(score.item())
-
     
     if epoch!=0 and epoch%10==0:
         visualize_training_predict(image,mask,output,workDir,True,True)
